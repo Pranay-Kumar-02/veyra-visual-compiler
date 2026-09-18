@@ -523,7 +523,3 @@ Phase 3: ADVANCED SYSTEMS [ROADMAP]
 Veyra Visual Compiler is an open-source project released under the [MIT License](LICENSE).  
 Copyright &copy; 2026 Pranay Kumar.
 
-### Academic Context
-- **Course**: BCSE307P – Compiler Design Laboratory
-- **Academic Project Title**: *Interactive Visual Compiler with Step-by-Step AST and Symbol Table Visualization*
-- **Product Identity**: Veyra Visual Compiler
