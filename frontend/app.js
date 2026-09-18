@@ -1,128 +1,230 @@
 /**
- * Veyra Visual Compiler — Interactive Frontend Client Application
- * Connects directly to backend compiler API to render real Tokens, AST,
- * Symbol Table, Diagnostics, and Output.
+ * Veyra Visual Compiler — Editorial Developer Workspace Client
+ * Fully data-driven client with CodeMirror editor integration,
+ * D3.js interactive SVG AST tree visualization, and source synchronization.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM Elements
-  const codeEditor = document.getElementById('codeEditor');
-  const lineNumbers = document.getElementById('lineNumbers');
-  const cursorPos = document.getElementById('cursorPos');
-  const docStats = document.getElementById('docStats');
-  const compilerStatus = document.getElementById('compilerStatus');
-  const btnCompile = document.getElementById('btnCompile');
-  const btnReset = document.getElementById('btnReset');
-  const btnClear = document.getElementById('btnClear');
-  const exampleSelect = document.getElementById('exampleSelect');
+  // ---------------------------------------------------------------------------
+  // 1. CodeMirror Custom Mode for VCL & Initialization
+  // ---------------------------------------------------------------------------
 
-  // Tabs
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
+  if (typeof CodeMirror !== 'undefined') {
+    CodeMirror.defineMode('vcl', () => {
+      const keywords = {
+        'let': true,
+        'if': true,
+        'else': true,
+        'print': true,
+        'true': 'boolean',
+        'false': 'boolean',
+      };
 
-  // Inspector Panels
-  const astContainer = document.getElementById('astContainer');
-  const btnExpandAst = document.getElementById('btnExpandAst');
-  const btnCollapseAst = document.getElementById('btnCollapseAst');
-  const symbolsTbody = document.getElementById('symbolsTbody');
-  const symbolBadge = document.getElementById('symbolBadge');
-  const tokensContainer = document.getElementById('tokensContainer');
-  const tokenBadge = document.getElementById('tokenBadge');
-  const tokenFilterBar = document.getElementById('tokenFilterBar');
-  const diagnosticsContainer = document.getElementById('diagnosticsContainer');
-  const diagBadge = document.getElementById('diagBadge');
-  const diagSummary = document.getElementById('diagSummary');
-  const programOutput = document.getElementById('programOutput');
+      return {
+        startState: () => ({ inString: false }),
+        token: (stream, state) => {
+          if (stream.eatSpace()) return null;
 
-  // Metrics
-  const metricTokens = document.getElementById('metricTokens');
-  const metricSymbols = document.getElementById('metricSymbols');
-  const metricDiags = document.getElementById('metricDiags');
-  const metricDuration = document.getElementById('metricDuration');
+          // Numbers (Integer and Float)
+          if (stream.match(/^[0-9]+(\.[0-9]+)?/)) {
+            return 'number';
+          }
 
-  // Pipeline Stepper Steps
-  const stages = {
-    lexer: document.getElementById('stage-lexer'),
-    parser: document.getElementById('stage-parser'),
-    semantic: document.getElementById('stage-semantic'),
-    interpreter: document.getElementById('stage-interpreter'),
+          // Identifiers and Keywords
+          if (stream.match(/^[A-Za-z_][A-Za-z0-9_]*/)) {
+            const word = stream.current();
+            if (keywords[word] === 'boolean') return 'boolean';
+            if (keywords[word]) return 'keyword';
+            return 'variable';
+          }
+
+          // Operators
+          if (stream.match(/^(==|!=|<=|>=|&&|\|\||[+\-*\/%!=<>])/)) {
+            return 'operator';
+          }
+
+          // Delimiters
+          if (stream.match(/^[(){};,]/)) {
+            return 'punctuation';
+          }
+
+          stream.next();
+          return null;
+        },
+      };
+    });
+  }
+
+  const editorTextarea = document.getElementById('sourceCode');
+  let editor = null;
+
+  if (typeof CodeMirror !== 'undefined') {
+    editor = CodeMirror.fromTextArea(editorTextarea, {
+      mode: 'vcl',
+      theme: 'vcl',
+      lineNumbers: true,
+      matchBrackets: true,
+      styleActiveLine: true,
+      tabSize: 4,
+      indentWithTabs: false,
+      extraKeys: {
+        'Tab': (cm) => {
+          cm.replaceSelection('    ', 'end');
+        },
+        'Ctrl-Enter': () => runCompiler(),
+        'Cmd-Enter': () => runCompiler(),
+      },
+    });
+
+    editor.on('cursorActivity', updateCursorDisplay);
+    editor.on('change', updateDocLength);
+  }
+
+  function updateCursorDisplay() {
+    if (!editor) return;
+    const pos = editor.getCursor();
+    document.getElementById('cursorPos').textContent = `Ln ${pos.line + 1}, Col ${pos.ch + 1}`;
+  }
+
+  function updateDocLength() {
+    if (!editor) return;
+    const count = editor.lineCount();
+    document.getElementById('docLength').textContent = `${count} ${count === 1 ? 'line' : 'lines'}`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. DOM Elements & State
+  // ---------------------------------------------------------------------------
+
+  const btnRun = document.getElementById('btnRun');
+  const btnResetCode = document.getElementById('btnResetCode');
+  const presetSelect = document.getElementById('presetSelect');
+  const pipelineStatusText = document.getElementById('pipelineStatusText');
+
+  // Tabs & Views
+  const navTabs = document.querySelectorAll('.nav-tab');
+  const viewPanels = document.querySelectorAll('.view-panel');
+
+  // Inspector Elements
+  const countSymbols = document.getElementById('countSymbols');
+  const countTokens = document.getElementById('countTokens');
+  const countDiagnostics = document.getElementById('countDiagnostics');
+  const tbodySymbols = document.getElementById('tbodySymbols');
+  const tbodyTokens = document.getElementById('tbodyTokens');
+  const diagnosticsList = document.getElementById('diagnosticsList');
+  const diagStatusSummary = document.getElementById('diagStatusSummary');
+  const outputTerminal = document.getElementById('outputTerminal');
+  const execStatusPill = document.getElementById('execStatusPill');
+
+  // Telemetry
+  const telTokens = document.getElementById('telTokens');
+  const telSymbols = document.getElementById('telSymbols');
+  const telDiags = document.getElementById('telDiags');
+  const telDuration = document.getElementById('telDuration');
+
+  // D3 Viewport & Controls
+  const astD3Viewport = document.getElementById('astD3Viewport');
+  const btnZoomIn = document.getElementById('btnZoomIn');
+  const btnZoomOut = document.getElementById('btnZoomOut');
+  const btnZoomFit = document.getElementById('btnZoomFit');
+  const astControls = document.getElementById('astControls');
+
+  // Pipeline Steps
+  const pipelineSteps = {
+    src: document.getElementById('step-src'),
+    lex: document.getElementById('step-lex'),
+    parse: document.getElementById('step-parse'),
+    ast: document.getElementById('step-ast'),
+    sem: document.getElementById('step-sem'),
+    sym: document.getElementById('step-sym'),
+    exec: document.getElementById('step-exec'),
   };
 
   // State
-  let currentTokens = [];
-  let currentTokenFilter = 'all';
+  let activeTokens = [];
+  let tokenCategoryFilter = 'all';
+  let activeSymbols = [];
+  let d3Svg = null;
+  let d3Zoom = null;
+  let currentAstData = null;
+  let errorLineMarks = [];
 
-  const DEFAULT_PROGRAM = `let x = 10 + 5 * 2;\nprint(x);`;
+  const PRESET_PROGRAMS = {
+    'arithmetic.vcl': `let x = 10 + 5 * 2;\nprint(x);`,
+    'conditions.vcl': `let score = 85;\nlet threshold = 50;\n\nif (score >= threshold) {\n    print(1);\n} else {\n    print(0);\n}`,
+    'scope.vcl': `let a = 10;\nlet b = 20;\nlet total = 0;\n\n{\n    let factor = 3;\n    total = (a + b) * factor;\n}\n\nprint(total);`,
+    'errors.vcl': `let valid = 10;\nlet valid = 20;\nprint(undeclared_variable);`,
+  };
 
   // ---------------------------------------------------------------------------
-  // Editor Utilities & Line Numbers
+  // 3. Tab Switching
   // ---------------------------------------------------------------------------
 
-  function updateLineNumbers() {
-    const lines = codeEditor.value.split('\n');
-    lineNumbers.innerHTML = lines.map((_, i) => i + 1).join('<br>');
-    const charCount = codeEditor.value.length;
-    docStats.textContent = `${lines.length} lines, ${charCount} chars`;
-  }
+  navTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const view = tab.dataset.view;
+      navTabs.forEach((t) => t.classList.remove('active'));
+      viewPanels.forEach((p) => p.classList.remove('active'));
 
-  function updateCursorPos() {
-    const selStart = codeEditor.selectionStart;
-    const textBefore = codeEditor.value.substring(0, selStart);
-    const lines = textBefore.split('\n');
-    const line = lines.length;
-    const col = lines[lines.length - 1].length + 1;
-    cursorPos.textContent = `Ln ${line}, Col ${col}`;
-  }
+      tab.classList.add('active');
+      const targetPanel = document.getElementById(`view${capitalize(view)}`);
+      if (targetPanel) targetPanel.classList.add('active');
 
-  codeEditor.addEventListener('input', () => {
-    updateLineNumbers();
-    updateCursorPos();
+      // Show/hide AST controls
+      if (view === 'ast') {
+        astControls.style.display = 'flex';
+        if (currentAstData) renderD3Ast(currentAstData);
+      } else {
+        astControls.style.display = 'none';
+      }
+    });
   });
 
-  codeEditor.addEventListener('keyup', updateCursorPos);
-  codeEditor.addEventListener('click', updateCursorPos);
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
 
-  codeEditor.addEventListener('scroll', () => {
-    lineNumbers.scrollTop = codeEditor.scrollTop;
+  // ---------------------------------------------------------------------------
+  // 4. Resizable Split Panes
+  // ---------------------------------------------------------------------------
+
+  const paneResizer = document.getElementById('paneResizer');
+  const paneEditor = document.getElementById('paneEditor');
+  let isDragging = false;
+
+  paneResizer.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    paneResizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
   });
 
-  // Handle Tab key in editor
-  codeEditor.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const start = codeEditor.selectionStart;
-      const end = codeEditor.selectionEnd;
-      codeEditor.value = codeEditor.value.substring(0, start) + '    ' + codeEditor.value.substring(end);
-      codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
-      updateLineNumbers();
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
-      runCompiler();
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const containerWidth = document.getElementById('workbench').offsetWidth;
+    const newWidth = Math.max(280, Math.min(containerWidth - 320, e.clientX));
+    paneEditor.style.flex = `0 0 ${newWidth}px`;
+    if (editor) editor.refresh();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      paneResizer.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      if (editor) editor.refresh();
     }
   });
 
   // ---------------------------------------------------------------------------
-  // Tab Switching
-  // ---------------------------------------------------------------------------
-
-  tabButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      tabButtons.forEach((b) => b.classList.remove('active'));
-      tabContents.forEach((c) => c.classList.remove('active'));
-      btn.classList.add('active');
-      const target = document.getElementById(btn.dataset.tab);
-      if (target) target.classList.add('active');
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Compiler Pipeline Execution & API
+  // 5. Compiler API Orchestration
   // ---------------------------------------------------------------------------
 
   async function runCompiler() {
-    const source = codeEditor.value;
-    setCompilerStatus('compiling', 'Compiling...');
-    resetPipelineStepper();
+    const source = editor ? editor.getValue() : editorTextarea.value;
+    clearErrorHighlights();
+    setPipelineRunning();
 
     try {
       const response = await fetch('/api/compile', {
@@ -132,191 +234,291 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        throw new Error(`Server returned HTTP ${response.status}`);
       }
 
-      const data = await response.json();
-      renderCompilerResults(data);
+      const result = await response.json();
+      renderExecutionResults(result);
     } catch (err) {
-      console.error('Compiler invocation error:', err);
-      setCompilerStatus('error', 'API Request Failed');
-      renderFatalError(err.message);
+      console.error('Compiler invocation failure:', err);
+      renderFatalFailure(err.message);
     }
   }
 
-  function setCompilerStatus(statusClass, text) {
-    const dot = compilerStatus.querySelector('.status-dot');
-    const label = compilerStatus.querySelector('.status-text');
-    dot.className = `status-dot ${statusClass}`;
-    label.textContent = text;
-  }
-
-  function resetPipelineStepper() {
-    Object.values(stages).forEach((el) => {
-      el.className = 'stage-step';
+  function setPipelineRunning() {
+    pipelineStatusText.textContent = 'Compiling...';
+    Object.values(pipelineSteps).forEach((el) => {
+      el.className = 'flow-step';
     });
+    pipelineSteps.src.classList.add('passed');
   }
 
-  function updatePipelineStepper(stagesExecuted, success, diagnostics) {
-    resetPipelineStepper();
+  function updatePipelineJourney(stagesExecuted, success, diagnostics) {
     const executed = stagesExecuted || [];
+    pipelineSteps.src.classList.add('passed');
 
-    if (executed.includes('Lexer')) stages.lexer.classList.add('success');
-    if (executed.includes('Parser')) stages.parser.classList.add('success');
-    if (executed.includes('Semantic Analysis')) stages.semantic.classList.add('success');
-    if (executed.includes('Interpreter')) stages.interpreter.classList.add('success');
+    if (executed.includes('Lexer')) pipelineSteps.lex.classList.add('passed');
+    if (executed.includes('Parser')) {
+      pipelineSteps.parse.classList.add('passed');
+      pipelineSteps.ast.classList.add('passed');
+    }
+    if (executed.includes('Semantic Analysis')) {
+      pipelineSteps.sem.classList.add('passed');
+      pipelineSteps.sym.classList.add('passed');
+    }
+    if (executed.includes('Interpreter')) pipelineSteps.exec.classList.add('passed');
 
     if (!success && diagnostics && diagnostics.length > 0) {
-      const firstStage = diagnostics[0].stage;
-      if (firstStage === 'Lexical Error') stages.lexer.className = 'stage-step error';
-      else if (firstStage === 'Syntax Error') stages.parser.className = 'stage-step error';
-      else if (firstStage === 'Semantic Error') stages.semantic.className = 'stage-step error';
-      else if (firstStage === 'Runtime Error') stages.interpreter.className = 'stage-step error';
+      const errStage = diagnostics[0].stage;
+      if (errStage === 'Lexical Error') pipelineSteps.lex.className = 'flow-step failed';
+      else if (errStage === 'Syntax Error') pipelineSteps.parse.className = 'flow-step failed';
+      else if (errStage === 'Semantic Error') pipelineSteps.sem.className = 'flow-step failed';
+      else if (errStage === 'Runtime Error') pipelineSteps.exec.className = 'flow-step failed';
+    }
+  }
+
+  function clearErrorHighlights() {
+    if (editor) {
+      errorLineMarks.forEach((mark) => mark.clear());
+      errorLineMarks = [];
+      editor.eachLine((line) => {
+        editor.removeLineClass(line, 'background', 'cm-error-line');
+      });
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Result Rendering
+  // 6. Result Rendering
   // ---------------------------------------------------------------------------
 
-  function renderCompilerResults(result) {
-    updatePipelineStepper(result.stages_executed, result.success, result.diagnostics);
+  function renderExecutionResults(result) {
+    updatePipelineJourney(result.stages_executed, result.success, result.diagnostics);
 
     if (result.success) {
-      setCompilerStatus('ready', 'Compilation Succeeded');
+      pipelineStatusText.textContent = 'Compiled Successfully';
     } else {
-      setCompilerStatus('error', 'Compilation Errors');
+      pipelineStatusText.textContent = 'Diagnostics Emitted';
     }
 
     // 1. AST View
-    renderAst(result.ast);
+    currentAstData = result.ast;
+    renderD3Ast(result.ast);
 
     // 2. Symbol Table View
-    renderSymbolTable(result.symbol_table);
+    activeSymbols = result.symbol_table || [];
+    renderSymbolGrid(activeSymbols);
 
-    // 3. Tokens View
-    currentTokens = result.tokens || [];
-    renderTokens(currentTokens);
+    // 3. Token Stream View
+    activeTokens = result.tokens || [];
+    renderTokenGrid(activeTokens);
 
     // 4. Diagnostics View
     renderDiagnostics(result.diagnostics);
 
-    // 5. Output & Metrics View
-    renderOutputAndMetrics(result);
+    // 5. Output View & Telemetry
+    renderOutputAndTelemetry(result);
   }
 
   // ---------------------------------------------------------------------------
-  // AST Visualizer Rendering
+  // 7. D3.js Hierarchical SVG AST Visualizer
   // ---------------------------------------------------------------------------
 
-  function renderAst(astData) {
+  function renderD3Ast(astData) {
     if (!astData) {
-      astContainer.innerHTML = '<div class="empty-state">No AST generated. Fix parsing errors to view tree.</div>';
+      astD3Viewport.innerHTML = '<div class="empty-msg">No AST generated. Correct syntax errors to inspect syntax tree.</div>';
       return;
     }
 
-    astContainer.innerHTML = '';
-    const rootTree = document.createElement('div');
-    rootTree.className = 'ast-tree';
-    rootTree.appendChild(buildAstNodeElement(astData));
-    astContainer.appendChild(rootTree);
-  }
+    astD3Viewport.innerHTML = '';
+    const width = astD3Viewport.clientWidth || 600;
+    const height = astD3Viewport.clientHeight || 500;
 
-  function buildAstNodeElement(node) {
-    const container = document.createElement('div');
-    container.className = 'ast-node';
+    const svg = d3
+      .select('#astD3Viewport')
+      .append('svg')
+      .attr('class', 'ast-svg')
+      .attr('width', '100%')
+      .attr('height', '100%');
 
-    const card = document.createElement('div');
-    card.className = 'ast-card';
+    d3Svg = svg;
 
-    // Badge color determination
-    let badgeClass = 'badge-stmt';
-    const type = node.node_type || '';
-    if (type === 'Program') badgeClass = 'badge-program';
-    else if (type.includes('Declaration')) badgeClass = 'badge-decl';
-    else if (type.includes('Assignment')) badgeClass = 'badge-assign';
-    else if (type.includes('Binary')) badgeClass = 'badge-binary';
-    else if (type.includes('Literal')) badgeClass = 'badge-literal';
-    else if (type.includes('Identifier')) badgeClass = 'badge-id';
+    const g = svg.append('g').attr('class', 'ast-content');
 
-    const hasChildren = node.children && node.children.length > 0;
-
-    let toggleHtml = '';
-    if (hasChildren) {
-      toggleHtml = '<span class="ast-toggle">▼</span>';
-    }
-
-    card.innerHTML = `
-      ${toggleHtml}
-      <span class="node-badge ${badgeClass}">${node.node_type}</span>
-      <span class="ast-node-label">${escapeHtml(node.label || node.node_type)}</span>
-      <span class="ast-node-meta">Ln ${node.line}:${node.column}</span>
-    `;
-
-    container.appendChild(card);
-
-    if (hasChildren) {
-      const childrenWrapper = document.createElement('div');
-      childrenWrapper.className = 'ast-children';
-
-      node.children.forEach((child) => {
-        childrenWrapper.appendChild(buildAstNodeElement(child));
+    d3Zoom = d3
+      .zoom()
+      .scaleExtent([0.2, 2.5])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
       });
 
-      container.appendChild(childrenWrapper);
+    svg.call(d3Zoom);
 
-      // Collapsible functionality
-      card.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isCollapsed = childrenWrapper.classList.toggle('collapsed');
-        const toggle = card.querySelector('.ast-toggle');
-        if (toggle) toggle.textContent = isCollapsed ? '▶' : '▼';
+    // Convert raw AST to D3 hierarchy
+    const root = d3.hierarchy(astData, (d) => d.children);
+
+    // Calculate tree layout dimensions
+    const nodeWidth = 140;
+    const nodeHeight = 54;
+    const levelSeparation = 70;
+
+    const treeLayout = d3
+      .tree()
+      .nodeSize([nodeWidth + 24, nodeHeight + levelSeparation]);
+
+    treeLayout(root);
+
+    // Draw connecting Bezier curves
+    const linkGenerator = d3
+      .linkVertical()
+      .x((d) => d.x)
+      .y((d) => d.y);
+
+    g.selectAll('.ast-link')
+      .data(root.links())
+      .enter()
+      .append('path')
+      .attr('class', 'ast-link')
+      .attr('d', (d) => {
+        return `M${d.source.x},${d.source.y + nodeHeight / 2}
+                C${d.source.x},${(d.source.y + d.target.y) / 2}
+                 ${d.target.x},${(d.source.y + d.target.y) / 2}
+                 ${d.target.x},${d.target.y - nodeHeight / 2}`;
       });
-    }
 
-    return container;
+    // Draw Node Groups
+    const nodes = g
+      .selectAll('.ast-node-group')
+      .data(root.descendants())
+      .enter()
+      .append('g')
+      .attr('class', 'ast-node-group')
+      .attr('transform', (d) => `translate(${d.x},${d.y})`)
+      .on('click', (event, d) => {
+        event.stopPropagation();
+        // Highlight active node in SVG
+        g.selectAll('.ast-node-group').classed('selected', false);
+        d3.select(event.currentTarget).classed('selected', true);
+
+        // Highlight in CodeMirror
+        if (editor && d.data.line) {
+          highlightSourceCoordinate(d.data.line, d.data.column);
+        }
+      });
+
+    // Node Box
+    nodes
+      .append('rect')
+      .attr('class', 'ast-node-rect')
+      .attr('x', -nodeWidth / 2)
+      .attr('y', -nodeHeight / 2)
+      .attr('width', nodeWidth)
+      .attr('height', nodeHeight);
+
+    // Node Badge (Node Type)
+    nodes
+      .append('text')
+      .attr('class', 'ast-node-badge')
+      .attr('y', -nodeHeight / 2 + 15)
+      .text((d) => truncate(d.data.node_type, 18));
+
+    // Node Primary Value / Operator
+    nodes
+      .append('text')
+      .attr('class', 'ast-node-text')
+      .attr('y', 4)
+      .text((d) => truncate(d.data.label || d.data.node_type, 16));
+
+    // Node Coordinates
+    nodes
+      .append('text')
+      .attr('class', 'ast-node-meta')
+      .attr('y', nodeHeight / 2 - 9)
+      .text((d) => (d.data.line ? `Ln ${d.data.line}:${d.data.column}` : ''));
+
+    // Initial center zoom
+    fitAstView(root, width, height);
   }
 
-  btnExpandAst.addEventListener('click', () => {
-    astContainer.querySelectorAll('.ast-children').forEach((el) => {
-      el.classList.remove('collapsed');
+  function fitAstView(root, width, height) {
+    if (!d3Svg || !d3Zoom || !root) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    root.descendants().forEach((d) => {
+      if (d.x < minX) minX = d.x;
+      if (d.x > maxX) maxX = d.x;
+      if (d.y < minY) minY = d.y;
+      if (d.y > maxY) maxY = d.y;
     });
-    astContainer.querySelectorAll('.ast-toggle').forEach((t) => (t.textContent = '▼'));
+
+    const treeW = (maxX - minX) + 160;
+    const treeH = (maxY - minY) + 120;
+    const scale = Math.min(1.2, Math.max(0.4, Math.min((width - 40) / treeW, (height - 40) / treeH)));
+    const centerX = width / 2 - ((minX + maxX) / 2) * scale;
+    const centerY = 40 - minY * scale;
+
+    d3Svg.transition().duration(400).call(
+      d3Zoom.transform,
+      d3.zoomIdentity.translate(centerX, centerY).scale(scale)
+    );
+  }
+
+  function truncate(str, len) {
+    if (!str) return '';
+    return str.length > len ? str.substring(0, len - 1) + '…' : str;
+  }
+
+  btnZoomIn.addEventListener('click', () => {
+    if (d3Svg && d3Zoom) d3Svg.transition().duration(200).call(d3Zoom.scaleBy, 1.25);
   });
 
-  btnCollapseAst.addEventListener('click', () => {
-    astContainer.querySelectorAll('.ast-children').forEach((el) => {
-      el.classList.add('collapsed');
-    });
-    astContainer.querySelectorAll('.ast-toggle').forEach((t) => (t.textContent = '▶'));
+  btnZoomOut.addEventListener('click', () => {
+    if (d3Svg && d3Zoom) d3Svg.transition().duration(200).call(d3Zoom.scaleBy, 0.8);
   });
 
+  btnZoomFit.addEventListener('click', () => {
+    if (currentAstData) renderD3Ast(currentAstData);
+  });
+
+  function highlightSourceCoordinate(line, col) {
+    if (!editor) return;
+    const lineIndex = Math.max(0, line - 1);
+    editor.setCursor({ line: lineIndex, ch: Math.max(0, (col || 1) - 1) });
+    editor.focus();
+
+    // Pulse line
+    editor.addLineClass(lineIndex, 'background', 'cm-error-line');
+    setTimeout(() => {
+      editor.removeLineClass(lineIndex, 'background', 'cm-error-line');
+    }, 1200);
+  }
+
   // ---------------------------------------------------------------------------
-  // Symbol Table Rendering
+  // 8. Symbol Table Data Grid
   // ---------------------------------------------------------------------------
 
-  function renderSymbolTable(symbols) {
-    const list = symbols || [];
-    symbolBadge.textContent = list.length;
-
-    if (list.length === 0) {
-      symbolsTbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No symbols active in symbol table.</td></tr>';
+  function renderSymbolGrid(symbols) {
+    countSymbols.textContent = symbols.length;
+    if (!symbols || symbols.length === 0) {
+      tbodySymbols.innerHTML = '<tr><td colspan="5" class="empty-msg">No active symbols recorded.</td></tr>';
       return;
     }
 
-    symbolsTbody.innerHTML = list
+    const filterVal = (document.getElementById('filterSymbolsInput').value || '').toLowerCase();
+    const filtered = symbols.filter((s) => s.name.toLowerCase().includes(filterVal));
+
+    if (filtered.length === 0) {
+      tbodySymbols.innerHTML = '<tr><td colspan="5" class="empty-msg">No matching symbols found.</td></tr>';
+      return;
+    }
+
+    tbodySymbols.innerHTML = filtered
       .map((s) => {
-        let typeClass = 'type-unknown';
-        if (s.type === 'int') typeClass = 'type-int';
-        else if (s.type === 'float') typeClass = 'type-float';
-        else if (s.type === 'bool') typeClass = 'type-bool';
-
+        const typeClass = `pill-type-${s.type || 'int'}`;
         return `
           <tr>
             <td><strong>${escapeHtml(s.name)}</strong></td>
-            <td><span class="type-pill ${typeClass}">${escapeHtml(s.type)}</span></td>
-            <td><span class="val-pill">${escapeHtml(String(s.value))}</span></td>
-            <td><span class="scope-pill">${escapeHtml(s.scope)} (lvl ${s.scope_level})</span></td>
+            <td><span class="grid-pill ${typeClass}">${escapeHtml(s.type)}</span></td>
+            <td><strong>${escapeHtml(String(s.value))}</strong></td>
+            <td><span class="grid-pill pill-scope">${escapeHtml(s.scope)}</span></td>
             <td>Ln ${s.line}, Col ${s.column}</td>
           </tr>
         `;
@@ -324,176 +526,166 @@ document.addEventListener('DOMContentLoaded', () => {
       .join('');
   }
 
+  document.getElementById('filterSymbolsInput').addEventListener('input', () => {
+    renderSymbolGrid(activeSymbols);
+  });
+
   // ---------------------------------------------------------------------------
-  // Token Stream Rendering & Filtering
+  // 9. Token Stream Inspector Grid
   // ---------------------------------------------------------------------------
 
-  function renderTokens(tokens) {
-    const list = tokens || [];
-    tokenBadge.textContent = list.length;
+  function renderTokenGrid(tokens) {
+    countTokens.textContent = tokens.length;
+    if (!tokens || tokens.length === 0) {
+      tbodyTokens.innerHTML = '<tr><td colspan="5" class="empty-msg">No tokens scanned.</td></tr>';
+      return;
+    }
 
-    let filtered = list;
-    if (currentTokenFilter !== 'all') {
-      if (currentTokenFilter === 'Operator') {
-        filtered = list.filter((t) => t.category.includes('Operator'));
+    let filtered = tokens;
+    if (tokenCategoryFilter !== 'all') {
+      if (tokenCategoryFilter === 'Operator') {
+        filtered = tokens.filter((t) => t.category && t.category.includes('Operator'));
       } else {
-        filtered = list.filter((t) => t.category.includes(currentTokenFilter));
+        filtered = tokens.filter((t) => t.category && t.category.includes(tokenCategoryFilter));
       }
     }
 
     if (filtered.length === 0) {
-      tokensContainer.innerHTML = '<div class="empty-state">No matching tokens found for active filter.</div>';
+      tbodyTokens.innerHTML = '<tr><td colspan="5" class="empty-msg">No tokens match category filter.</td></tr>';
       return;
     }
 
-    tokensContainer.innerHTML = filtered
+    tbodyTokens.innerHTML = filtered
       .map((t, idx) => {
         return `
-          <div class="token-card" title="${escapeHtml(t.category)}">
-            <div class="token-header">
-              <span class="token-type">${escapeHtml(t.type)}</span>
-              <span class="token-idx">#${t.source_pos}</span>
-            </div>
-            <div class="token-lexeme">${escapeHtml(t.lexeme || 'EOF')}</div>
-            <div class="token-footer">
-              <span>${escapeHtml(t.category)}</span>
-              <span>Ln ${t.line}:${t.column}</span>
-            </div>
-          </div>
+          <tr>
+            <td style="color: var(--text-muted);">${idx + 1}</td>
+            <td style="color: var(--sem-blue); font-weight: 500;">${escapeHtml(t.type)}</td>
+            <td><code>${escapeHtml(t.lexeme || 'EOF')}</code></td>
+            <td><span class="grid-pill pill-scope">${escapeHtml(t.category)}</span></td>
+            <td>Ln ${t.line}:${t.column}</td>
+          </tr>
         `;
       })
       .join('');
   }
 
-  tokenFilterBar.addEventListener('click', (e) => {
-    if (e.target.classList.contains('filter-pill')) {
-      tokenFilterBar.querySelectorAll('.filter-pill').forEach((p) => p.classList.remove('active'));
+  document.getElementById('tokenFilterRow').addEventListener('click', (e) => {
+    if (e.target.classList.contains('filter-btn')) {
+      document.querySelectorAll('#tokenFilterRow .filter-btn').forEach((b) => b.classList.remove('active'));
       e.target.classList.add('active');
-      currentTokenFilter = e.target.dataset.filter;
-      renderTokens(currentTokens);
+      tokenCategoryFilter = e.target.dataset.cat;
+      renderTokenGrid(activeTokens);
     }
   });
 
   // ---------------------------------------------------------------------------
-  // Diagnostics Rendering
+  // 10. Diagnostics Console & Editor Error Sync
   // ---------------------------------------------------------------------------
 
   function renderDiagnostics(diagnostics) {
     const list = diagnostics || [];
-    diagBadge.textContent = list.length;
+    countDiagnostics.textContent = list.length;
+
     if (list.length > 0) {
-      diagBadge.classList.add('has-errors');
-      diagSummary.textContent = `${list.length} issue(s) detected`;
+      countDiagnostics.classList.add('has-errors');
+      diagStatusSummary.textContent = `${list.length} issue(s) detected`;
     } else {
-      diagBadge.classList.remove('has-errors');
-      diagSummary.textContent = '0 issues detected';
+      countDiagnostics.classList.remove('has-errors');
+      diagStatusSummary.textContent = '0 issues detected';
     }
 
     if (list.length === 0) {
-      diagnosticsContainer.innerHTML = `
-        <div class="empty-state success-empty">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      diagnosticsList.innerHTML = `
+        <div class="diag-clean-state">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
-          <span>No diagnostics or errors detected. Program is clean.</span>
+          <span>No compilation diagnostics. The program parsed, validated, and executed cleanly.</span>
         </div>
       `;
       return;
     }
 
-    diagnosticsContainer.innerHTML = list
+    diagnosticsList.innerHTML = list
       .map((d) => {
-        const isWarn = d.severity === 'WARNING';
         return `
-          <div class="diag-card ${isWarn ? 'diag-warning' : ''}">
-            <div class="diag-header">
-              <span class="diag-stage">${escapeHtml(d.stage)}</span>
-              <span class="diag-loc">Line ${d.line}, Column ${d.column}</span>
+          <div class="diag-item" data-line="${d.line}" data-col="${d.column}" title="Click to navigate to source line">
+            <div class="diag-meta-row">
+              <span class="diag-stage-tag">${escapeHtml(d.stage)}</span>
+              <span class="diag-loc-tag">Line ${d.line}, Column ${d.column}</span>
             </div>
-            <div class="diag-message">${escapeHtml(d.message)}</div>
-            ${d.hint ? `<div class="diag-hint">💡 Hint: ${escapeHtml(d.hint)}</div>` : ''}
+            <div class="diag-msg">${escapeHtml(d.message)}</div>
+            ${d.hint ? `<div class="diag-hint-box">${escapeHtml(d.hint)}</div>` : ''}
           </div>
         `;
       })
       .join('');
 
-    // If compilation failed with diagnostics, auto-switch to Diagnostics tab for immediate visibility
-    if (list.length > 0) {
-      const diagTabBtn = document.getElementById('tabBtnDiagnostics');
-      if (diagTabBtn) diagTabBtn.click();
+    // Highlight error lines in editor
+    if (editor) {
+      list.forEach((d) => {
+        if (d.line > 0) {
+          const lineIndex = d.line - 1;
+          editor.addLineClass(lineIndex, 'background', 'cm-error-line');
+        }
+      });
     }
+
+    // Attach click jump to diagnostic cards
+    document.querySelectorAll('.diag-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const line = parseInt(item.dataset.line, 10);
+        const col = parseInt(item.dataset.col, 10);
+        if (line > 0) highlightSourceCoordinate(line, col);
+      });
+    });
+
+    // Auto-switch to Diagnostics tab on error
+    const tabDiag = document.getElementById('tabDiagnostics');
+    if (tabDiag) tabDiag.click();
   }
 
   // ---------------------------------------------------------------------------
-  // Output & Metrics Rendering
+  // 11. Output & Telemetry
   // ---------------------------------------------------------------------------
 
-  function renderOutputAndMetrics(result) {
+  function renderOutputAndTelemetry(result) {
     if (result.output) {
-      programOutput.textContent = result.output;
+      outputTerminal.textContent = result.output;
+      execStatusPill.textContent = 'Status: Program Output Captured';
+      execStatusPill.style.color = 'var(--accent)';
     } else if (result.success) {
-      programOutput.textContent = '[Program completed with no output]';
+      outputTerminal.textContent = '[Execution finished with no output]';
+      execStatusPill.textContent = 'Status: Normal Exit (Code 0)';
+      execStatusPill.style.color = 'var(--text-dim)';
     } else {
-      programOutput.textContent = '[Execution halted due to compiler errors. See Diagnostics tab.]';
+      outputTerminal.textContent = '[Execution halted due to compilation diagnostics. Inspect Diagnostics tab.]';
+      execStatusPill.textContent = 'Status: Compilation Error';
+      execStatusPill.style.color = 'var(--sem-error)';
     }
 
     const m = result.metrics || {};
-    metricTokens.textContent = m.token_count || 0;
-    metricSymbols.textContent = m.symbol_count || 0;
-    metricDiags.textContent = m.diagnostic_count || 0;
-    metricDuration.textContent = `${m.diagnostic_pipeline_duration_ms || 0.0} ms`;
+    telTokens.textContent = m.token_count || 0;
+    telSymbols.textContent = m.symbol_count || 0;
+    telDiags.textContent = m.diagnostic_count || 0;
+    telDuration.textContent = `${m.diagnostic_pipeline_duration_ms || 0.0} ms`;
   }
 
-  function renderFatalError(message) {
-    programOutput.textContent = `[Fatal Application Error]: ${message}`;
-    diagnosticsContainer.innerHTML = `
-      <div class="diag-card">
-        <div class="diag-stage">Internal Server Error</div>
-        <div class="diag-message">${escapeHtml(message)}</div>
+  function renderFatalFailure(msg) {
+    outputTerminal.textContent = `[Fatal Error]: ${msg}`;
+    diagnosticsList.innerHTML = `
+      <div class="diag-item">
+        <div class="diag-meta-row">
+          <span class="diag-stage-tag">System Error</span>
+        </div>
+        <div class="diag-msg">${escapeHtml(msg)}</div>
       </div>
     `;
-    diagBadge.textContent = '1';
-    diagBadge.classList.add('has-errors');
+    countDiagnostics.textContent = '1';
+    countDiagnostics.classList.add('has-errors');
   }
-
-  // ---------------------------------------------------------------------------
-  // Presets & Controls
-  // ---------------------------------------------------------------------------
-
-  btnCompile.addEventListener('click', runCompiler);
-
-  btnReset.addEventListener('click', () => {
-    codeEditor.value = DEFAULT_PROGRAM;
-    updateLineNumbers();
-    updateCursorPos();
-    runCompiler();
-  });
-
-  btnClear.addEventListener('click', () => {
-    codeEditor.value = '';
-    updateLineNumbers();
-    updateCursorPos();
-    runCompiler();
-  });
-
-  // Example presets
-  const presets = {
-    'arithmetic.vcl': `let x = 10 + 5 * 2;\nprint(x);`,
-    'conditions.vcl': `let score = 85;\nlet threshold = 50;\n\nif (score >= threshold) {\n    print(1);\n} else {\n    print(0);\n}`,
-    'scope.vcl': `let a = 10;\nlet b = 20;\nlet total = 0;\n\n{\n    let factor = 3;\n    total = (a + b) * factor;\n}\n\nprint(total);`,
-    'errors.vcl': `let valid = 10;\nlet valid = 20;\nprint(undeclared_variable);`,
-  };
-
-  exampleSelect.addEventListener('change', () => {
-    const key = exampleSelect.value;
-    if (presets[key]) {
-      codeEditor.value = presets[key];
-      updateLineNumbers();
-      updateCursorPos();
-      runCompiler();
-    }
-  });
 
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -505,8 +697,34 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/'/g, '&#039;');
   }
 
-  // Initial boot
-  updateLineNumbers();
-  updateCursorPos();
-  runCompiler();
+  // ---------------------------------------------------------------------------
+  // 12. Controls & Preset Loading
+  // ---------------------------------------------------------------------------
+
+  btnRun.addEventListener('click', runCompiler);
+
+  btnResetCode.addEventListener('click', () => {
+    const key = presetSelect.value;
+    const code = PRESET_PROGRAMS[key] || PRESET_PROGRAMS['arithmetic.vcl'];
+    if (editor) editor.setValue(code);
+    runCompiler();
+  });
+
+  presetSelect.addEventListener('change', () => {
+    const key = presetSelect.value;
+    if (PRESET_PROGRAMS[key]) {
+      if (editor) editor.setValue(PRESET_PROGRAMS[key]);
+      runCompiler();
+    }
+  });
+
+  // Initial Run
+  setTimeout(() => {
+    if (editor) {
+      editor.refresh();
+      updateCursorDisplay();
+      updateDocLength();
+    }
+    runCompiler();
+  }, 100);
 });
