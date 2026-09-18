@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Veyra Visual Compiler — Interactive AST & Symbol Table Visualizer</title>
+  <meta name="description" content="Veyra Visual Compiler: Interactive Visual Compiler with Step-by-Step AST and Symbol Table Visualization for VCL." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">
+          <span>Veyra</span> Visual Compiler
+          <span class="version-badge">Phase 1 Slice</span>
+        </div>
+        <div class="brand-subtitle">Interactive Visual Compiler with Step-by-Step AST & Symbol Table Visualization</div>
+      </div>
+    </div>
+
+    <!-- Pipeline Stage Timeline -->
+    <div class="pipeline-tracker" id="pipelineTracker">
+      <div class="stage-step" id="stage-lexer" title="Lexical Analyzer">
+        <span class="step-dot"></span>
+        <span class="step-name">1. Lexer</span>
+      </div>
+      <div class="stage-connector"></div>
+      <div class="stage-step" id="stage-parser" title="Recursive-Descent Parser">
+        <span class="step-dot"></span>
+        <span class="step-name">2. Parser</span>
+      </div>
+      <div class="stage-connector"></div>
+      <div class="stage-step" id="stage-semantic" title="Semantic Analysis & Scope Resolution">
+        <span class="step-dot"></span>
+        <span class="step-name">3. Semantic</span>
+      </div>
+      <div class="stage-connector"></div>
+      <div class="stage-step" id="stage-interpreter" title="Tree-Walking AST Interpreter">
+        <span class="step-dot"></span>
+        <span class="step-name">4. Interpreter</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="header-actions">
+      <div class="select-wrapper">
+        <select id="exampleSelect" aria-label="Load VCL Example">
+          <option value="" disabled selected>Load VCL Preset...</option>
+          <option value="arithmetic.vcl">Arithmetic & Precedence (Default)</option>
+          <option value="conditions.vcl">If-Else Conditionals</option>
+          <option value="scope.vcl">Scoping & Variables</option>
+          <option value="errors.vcl">Semantic Diagnostics Demo</option>
+        </select>
+      </div>
+      <button id="btnCompile" class="btn btn-primary" title="Compile and Execute (Ctrl + Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Run Compiler</span>
+        <kbd>Ctrl+↵</kbd>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="workspace">
+    <!-- Left Pane: Editor -->
+    <section class="pane pane-editor">
+      <div class="pane-header">
+        <div class="pane-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span>VCL Source Code</span>
+          <span class="file-tag">main.vcl</span>
+        </div>
+        <div class="editor-actions">
+          <button id="btnReset" class="btn btn-ghost" title="Reset to Sample">Reset</button>
+          <button id="btnClear" class="btn btn-ghost" title="Clear Editor">Clear</button>
+        </div>
+      </div>
+
+      <div class="editor-container" id="editorContainer">
+        <div class="line-numbers" id="lineNumbers">1</div>
+        <textarea id="codeEditor" spellcheck="false" placeholder="Enter VCL code here...">let x = 10 + 5 * 2;
+print(x);</textarea>
+      </div>
+
+      <div class="editor-footer">
+        <div class="editor-stat" id="cursorPos">Ln 1, Col 1</div>
+        <div class="editor-stat" id="docStats">2 lines, 30 chars</div>
+        <div class="status-indicator" id="compilerStatus">
+          <span class="status-dot ready"></span>
+          <span class="status-text">Ready</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Pane: Compiler Inspection Suite -->
+    <section class="pane pane-inspector">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="tab-ast" id="tabBtnAst">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>AST Visualizer</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-symbols" id="tabBtnSymbols">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+          <span>Symbol Table</span>
+          <span class="counter-badge" id="symbolBadge">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-tokens" id="tabBtnTokens">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="9" x2="20" y2="9"></line>
+            <line x1="4" y1="15" x2="20" y2="15"></line>
+            <line x1="10" y1="3" x2="8" y2="21"></line>
+            <line x1="16" y1="3" x2="14" y2="21"></line>
+          </svg>
+          <span>Token Stream</span>
+          <span class="counter-badge" id="tokenBadge">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-diagnostics" id="tabBtnDiagnostics">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>Diagnostics</span>
+          <span class="counter-badge error-badge" id="diagBadge">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-output" id="tabBtnOutput">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span>Output & Metrics</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: AST Tree View -->
+      <div class="tab-content active" id="tab-ast">
+        <div class="inspector-toolbar">
+          <div class="toolbar-title">Abstract Syntax Tree (Hierarchical)</div>
+          <div class="toolbar-actions">
+            <button id="btnExpandAst" class="btn btn-tiny">Expand All</button>
+            <button id="btnCollapseAst" class="btn btn-tiny">Collapse All</button>
+          </div>
+        </div>
+        <div class="tree-viewport" id="astContainer">
+          <div class="empty-state">Click "Run Compiler" to generate and inspect the AST.</div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Symbol Table View -->
+      <div class="tab-content" id="tab-symbols">
+        <div class="inspector-toolbar">
+          <div class="toolbar-title">Hierarchical Symbol Table & Runtime Bindings</div>
+          <div class="toolbar-meta" id="symbolsScopeMeta">Active Scope: Global</div>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="symbolsTable">
+            <thead>
+              <tr>
+                <th>Identifier</th>
+                <th>Inferred Type</th>
+                <th>Evaluated Value</th>
+                <th>Scope Level</th>
+                <th>Declaration Location</th>
+              </tr>
+            </thead>
+            <tbody id="symbolsTbody">
+              <tr><td colspan="5" class="empty-cell">No symbols recorded.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 3: Token Stream View -->
+      <div class="tab-content" id="tab-tokens">
+        <div class="inspector-toolbar">
+          <div class="toolbar-title">Lexical Token Stream (Character Scanner)</div>
+          <div class="token-filter-bar" id="tokenFilterBar">
+            <button class="filter-pill active" data-filter="all">All</button>
+            <button class="filter-pill" data-filter="Keyword">Keywords</button>
+            <button class="filter-pill" data-filter="Identifier">Identifiers</button>
+            <button class="filter-pill" data-filter="Literal">Literals</button>
+            <button class="filter-pill" data-filter="Operator">Operators</button>
+            <button class="filter-pill" data-filter="Delimiter">Delimiters</button>
+          </div>
+        </div>
+        <div class="tokens-viewport" id="tokensContainer">
+          <div class="empty-state">No tokens scanned.</div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Diagnostics View -->
+      <div class="tab-content" id="tab-diagnostics">
+        <div class="inspector-toolbar">
+          <div class="toolbar-title">Compiler Diagnostics & Error Console</div>
+          <div class="toolbar-meta" id="diagSummary">0 issues detected</div>
+        </div>
+        <div class="diagnostics-viewport" id="diagnosticsContainer">
+          <div class="empty-state success-empty">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>No diagnostics or errors detected. Program is clean.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 5: Program Output & Metrics View -->
+      <div class="tab-content" id="tab-output">
+        <div class="inspector-toolbar">
+          <div class="toolbar-title">Standard Output & Diagnostic Pipeline Metrics</div>
+        </div>
+        <div class="terminal-container">
+          <div class="terminal-bar">
+            <span class="term-dot red"></span>
+            <span class="term-dot yellow"></span>
+            <span class="term-dot green"></span>
+            <span class="term-title">Program Output (stdout)</span>
+          </div>
+          <pre class="terminal-body" id="programOutput">// Program output will appear here after compilation</pre>
+        </div>
+
+        <div class="metrics-card">
+          <div class="metrics-title">Diagnostic Pipeline Metrics (Diagnostic Only)</div>
+          <div class="metrics-grid" id="metricsGrid">
+            <div class="metric-item">
+              <span class="metric-label">Tokens Scanned</span>
+              <span class="metric-val" id="metricTokens">0</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Symbols Resolved</span>
+              <span class="metric-val" id="metricSymbols">0</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Diagnostics Emitted</span>
+              <span class="metric-val" id="metricDiags">0</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Pipeline Duration</span>
+              <span class="metric-val" id="metricDuration">0.0 ms</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
