@@ -7,7 +7,11 @@ import os
 from flask import Flask, request, jsonify, send_from_directory
 from backend.compiler import VeyraCompiler
 
-app = Flask(__name__, static_folder="frontend", static_url_path="")
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+if not os.path.exists(os.path.join(FRONTEND_DIR, "index.html")):
+    FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend")
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 compiler = VeyraCompiler()
 
 EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "examples")
@@ -15,12 +19,14 @@ EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "examples")
 
 @app.route("/")
 def index():
-    return send_from_directory("frontend", "index.html")
+    return send_from_directory(FRONTEND_DIR, "index.html")
 
 
 @app.route("/<path:path>")
 def static_proxy(path):
-    return send_from_directory("frontend", path)
+    if os.path.exists(os.path.join(FRONTEND_DIR, path)):
+        return send_from_directory(FRONTEND_DIR, path)
+    return send_from_directory(FRONTEND_DIR, "index.html")
 
 
 @app.route("/api/health", methods=["GET"])
@@ -36,7 +42,7 @@ def health():
 @app.route("/api/compile", methods=["POST"])
 def compile_source():
     data = request.get_json(silent=True) or {}
-    source = data.get("source", "")
+    source = data.get("source") if data.get("source") is not None else data.get("code", "")
     run_interpreter = data.get("run_interpreter", True)
 
     if not isinstance(source, str):

@@ -1,0 +1,11 @@
+{
+  "name": "veyra-visual-compiler",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Interactive Visual Compiler with Step-by-Step AST, Symbol Table, and 3AC Visualization",
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "test": "python -m pytest -v"
+  }
+}
