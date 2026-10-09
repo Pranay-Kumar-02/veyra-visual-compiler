@@ -28,7 +28,7 @@ def health():
     return jsonify({
         "status": "online",
         "service": "Veyra Visual Compiler",
-        "phase": 1,
+        "phase": 2,
         "academic_title": "Interactive Visual Compiler with Step-by-Step AST and Symbol Table Visualization",
     })
 

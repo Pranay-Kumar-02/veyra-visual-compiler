@@ -20,6 +20,7 @@ from backend.parser import Parser
 from backend.symbol_table import Symbol, SymbolTable
 from backend.semantic import SemanticAnalyzer
 from backend.interpreter import Interpreter
+from backend.ir import IRGenerator, IRProgram, IRInstruction
 from backend.compiler import VeyraCompiler, CompilationResult
 
 __all__ = [
@@ -40,6 +41,9 @@ __all__ = [
     "Symbol",
     "SymbolTable",
     "SemanticAnalyzer",
+    "IRGenerator",
+    "IRProgram",
+    "IRInstruction",
     "Interpreter",
     "VeyraCompiler",
     "CompilationResult",

@@ -14,6 +14,7 @@ from backend.parser import Parser
 from backend.ast_nodes import Program
 from backend.symbol_table import SymbolTable
 from backend.semantic import SemanticAnalyzer
+from backend.ir import IRGenerator, IRProgram
 from backend.interpreter import Interpreter
 from backend.errors import (
     Diagnostic,
@@ -34,6 +35,8 @@ class CompilationResult:
     output_lines: List[str]
     stages_executed: List[str]
     metrics: Dict[str, Any]
+    ir: Optional[Dict[str, Any]] = None
+    ir_code: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -41,6 +44,8 @@ class CompilationResult:
             "tokens": self.tokens,
             "ast": self.ast,
             "symbol_table": self.symbol_table,
+            "ir": self.ir,
+            "ir_code": self.ir_code,
             "diagnostics": self.diagnostics,
             "output": self.output,
             "output_lines": self.output_lines,
@@ -157,7 +162,7 @@ class VeyraCompiler:
             diagnostics.extend(sem_diagnostics)
             symbol_table_data = symbol_table.to_list()
 
-            # If semantic errors are present, stop before interpretation
+            # If semantic errors are present, stop before IR generation and interpretation
             has_errors = any(d.severity == DiagnosticSeverity.ERROR for d in diagnostics)
             if has_errors:
                 return self._build_result(
@@ -165,6 +170,8 @@ class VeyraCompiler:
                     tokens=tokens_data,
                     ast=ast_data,
                     symbol_table=symbol_table_data,
+                    ir=None,
+                    ir_code="",
                     diagnostics=diagnostics,
                     output_lines=[],
                     stages_executed=stages_executed,
@@ -184,6 +191,8 @@ class VeyraCompiler:
                 tokens=tokens_data,
                 ast=ast_data,
                 symbol_table=symbol_table_data,
+                ir=None,
+                ir_code="",
                 diagnostics=diagnostics,
                 output_lines=[],
                 stages_executed=stages_executed,
@@ -191,7 +200,40 @@ class VeyraCompiler:
             )
 
         # ---------------------------------------------------------------------
-        # STAGE 4: AST Interpreter Execution
+        # STAGE 4: Three-Address Code (3AC) Intermediate Representation
+        # ---------------------------------------------------------------------
+        ir_data: Optional[Dict[str, Any]] = None
+        ir_code: str = ""
+        try:
+            ir_gen = IRGenerator()
+            ir_program = ir_gen.generate(program_ast)
+            ir_data = ir_program.to_dict()
+            ir_code = ir_program.to_text()
+            stages_executed.append("IR Generation")
+        except Exception as e:
+            diagnostics.append(
+                Diagnostic(
+                    stage=DiagnosticStage.SEMANTIC,
+                    message=f"Internal IR generator error: {str(e)}",
+                    line=1,
+                    column=1,
+                )
+            )
+            return self._build_result(
+                success=False,
+                tokens=tokens_data,
+                ast=ast_data,
+                symbol_table=symbol_table_data,
+                ir=None,
+                ir_code="",
+                diagnostics=diagnostics,
+                output_lines=[],
+                stages_executed=stages_executed,
+                start_time=start_time,
+            )
+
+        # ---------------------------------------------------------------------
+        # STAGE 5: AST Interpreter Execution
         # ---------------------------------------------------------------------
         if run_interpreter:
             try:
@@ -206,6 +248,8 @@ class VeyraCompiler:
                     tokens=tokens_data,
                     ast=ast_data,
                     symbol_table=symbol_table_data,
+                    ir=ir_data,
+                    ir_code=ir_code,
                     diagnostics=diagnostics,
                     output_lines=output_lines,
                     stages_executed=stages_executed,
@@ -225,6 +269,8 @@ class VeyraCompiler:
                     tokens=tokens_data,
                     ast=ast_data,
                     symbol_table=symbol_table_data,
+                    ir=ir_data,
+                    ir_code=ir_code,
                     diagnostics=diagnostics,
                     output_lines=output_lines,
                     stages_executed=stages_executed,
@@ -236,6 +282,8 @@ class VeyraCompiler:
             tokens=tokens_data,
             ast=ast_data,
             symbol_table=symbol_table_data,
+            ir=ir_data,
+            ir_code=ir_code,
             diagnostics=diagnostics,
             output_lines=output_lines,
             stages_executed=stages_executed,
@@ -252,11 +300,14 @@ class VeyraCompiler:
         output_lines: List[str],
         stages_executed: List[str],
         start_time: float,
+        ir: Optional[Dict[str, Any]] = None,
+        ir_code: str = "",
     ) -> CompilationResult:
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
         metrics = {
             "token_count": len(tokens),
             "symbol_count": len(symbol_table),
+            "ir_instruction_count": ir.get("instruction_count", 0) if ir else 0,
             "diagnostic_count": len(diagnostics),
             "output_line_count": len(output_lines),
             "diagnostic_pipeline_duration_ms": elapsed_ms,
@@ -266,6 +317,8 @@ class VeyraCompiler:
             tokens=tokens,
             ast=ast,
             symbol_table=symbol_table,
+            ir=ir,
+            ir_code=ir_code,
             diagnostics=[d.to_dict() for d in diagnostics],
             output="\n".join(output_lines),
             output_lines=output_lines,
