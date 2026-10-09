@@ -30,7 +30,7 @@
         <span class="brand-name">VEYRA</span>
         <span class="brand-sub">Visual Compiler</span>
       </div>
-      <span class="pill-badge">Phase 1</span>
+      <span class="pill-badge">Phase 2</span>
       <div class="context-sep"></div>
       <div class="file-context">
         <span class="file-dot"></span>
@@ -70,6 +70,11 @@
         <span class="step-lbl">SYMBOLS</span>
       </div>
       <span class="flow-arrow">&rarr;</span>
+      <div class="flow-step" id="step-ir">
+        <span class="step-dot"></span>
+        <span class="step-lbl">IR (3AC)</span>
+      </div>
+      <span class="flow-arrow">&rarr;</span>
       <div class="flow-step" id="step-exec">
         <span class="step-dot"></span>
         <span class="step-lbl">EXECUTE</span>
@@ -80,7 +85,8 @@
     <div class="nav-right">
       <div class="preset-selector">
         <select id="presetSelect" aria-label="Select VCL Example">
-          <option value="arithmetic.vcl" selected>Example: Arithmetic & Precedence</option>
+          <option value="phase2_demo.vcl" selected>Phase 2: 3AC & Branching (Demo)</option>
+          <option value="arithmetic.vcl">Example: Arithmetic & Precedence</option>
           <option value="conditions.vcl">Example: If-Else Conditionals</option>
           <option value="scope.vcl">Example: Scoping & Variables</option>
           <option value="errors.vcl">Example: Semantic Diagnostics</option>
@@ -120,8 +126,15 @@
 
       <!-- Real CodeMirror Editor Container -->
       <div class="editor-wrap" id="editorWrap">
-        <textarea id="sourceCode">let x = 10 + 5 * 2;
-print(x);</textarea>
+        <textarea id="sourceCode">let score = 20;
+let bonus = 5;
+let result = score + bonus * 2;
+
+if (result >= 30) {
+    print(result);
+} else {
+    print(0);
+}</textarea>
       </div>
 
       <!-- Editor Status Bar -->
@@ -165,6 +178,14 @@ print(x);</textarea>
             </svg>
             <span>Symbol Table</span>
             <span class="tab-count" id="countSymbols">0</span>
+          </button>
+          <button class="nav-tab" data-view="ir" id="tabIr">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span>3AC (IR)</span>
+            <span class="tab-count" id="countIr">0</span>
           </button>
           <button class="nav-tab" data-view="tokens" id="tabTokens">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -241,6 +262,42 @@ print(x);</textarea>
         </div>
       </div>
 
+      <!-- VIEW: Intermediate Representation (3AC) -->
+      <div class="view-panel" id="viewIr">
+        <div class="view-header">
+          <div class="view-title">Three-Address Code (3AC) Intermediate Representation</div>
+          <div class="view-sub" id="irMetaText">Deterministic linear instructions emitted from validated AST</div>
+          <div class="ir-header-actions">
+            <button class="btn-icon-text" id="btnCopyIr" title="Copy 3AC to clipboard">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Copy 3AC</span>
+            </button>
+          </div>
+        </div>
+        <div class="ir-container" id="irContainer">
+          <div class="ir-empty-state" id="irEmptyState">
+            <div class="empty-msg">No intermediate code generated yet. Compile program to inspect 3AC stream.</div>
+          </div>
+          <div class="ir-code-wrapper" id="irCodeWrapper" style="display: none;">
+            <div class="ir-line-numbers" id="irLineNumbers"></div>
+            <pre class="ir-code-content" id="irCodeContent"></pre>
+          </div>
+          <div class="ir-error-state" id="irErrorState" style="display: none;">
+            <div class="diag-clean-state" style="color: var(--sem-error);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span id="irErrorMessage">Compilation halted prior to IR generation due to diagnostics.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- VIEW 3: Token Stream Inspector -->
       <div class="view-panel" id="viewTokens">
         <div class="view-header">
@@ -307,6 +364,10 @@ print(x);</textarea>
           <div class="telemetry-item">
             <span class="telemetry-label">Symbols</span>
             <span class="telemetry-val" id="telSymbols">0</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">3AC Instr</span>
+            <span class="telemetry-val" id="telIr">0</span>
           </div>
           <div class="telemetry-item">
             <span class="telemetry-label">Diagnostics</span>

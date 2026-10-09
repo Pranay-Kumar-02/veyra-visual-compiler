@@ -7,6 +7,7 @@ An interactive compiler engineering environment that makes the language-processi
   <strong>Interactive Compiler</strong> &bull;
   <strong>AST Visualization</strong> &bull;
   <strong>Symbol Table</strong> &bull;
+  <strong>Three-Address Code (3AC)</strong> &bull;
   <strong>Diagnostics</strong> &bull;
   <strong>Interpreter</strong>
 </p>
@@ -15,7 +16,7 @@ An interactive compiler engineering environment that makes the language-processi
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white" alt="Python 3.12" /></a>
   <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Backend-Flask_3.1-000000.svg?style=flat&logo=flask&logoColor=white" alt="Flask" /></a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"><img src="https://img.shields.io/badge/Frontend-Vanilla_ES6+-F7DF1E.svg?style=flat&logo=javascript&logoColor=black" alt="JavaScript" /></a>
-  <a href="tests/"><img src="https://img.shields.io/badge/Tests-38_Passing-10b981.svg?style=flat&logo=pytest&logoColor=white" alt="Tests" /></a>
+  <a href="tests/"><img src="https://img.shields.io/badge/Tests-58_Passing-10b981.svg?style=flat&logo=pytest&logoColor=white" alt="Tests" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-38bdf8.svg?style=flat" alt="MIT License" /></a>
 </p>
 
@@ -33,7 +34,7 @@ Traditional compilers operate as opaque black boxes:
 
 $$\text{Source Code} \longrightarrow \fbox{Compiler} \longrightarrow \text{Machine Output}$$
 
-For developers, educators, and students investigating language implementations, this black-box paradigm conceals the most critical engineering transformations: how character sequences become structured tokens, how grammar rules assemble an Abstract Syntax Tree (AST), how scopes resolve bindings within a symbol table, and why semantic constraints reject invalid programs before execution.
+For developers, educators, and students investigating language implementations, this black-box paradigm conceals the most critical engineering transformations: how character sequences become structured tokens, how grammar rules assemble an Abstract Syntax Tree (AST), how scopes resolve bindings within a symbol table, how intermediate code is linearized into Three-Address Code (3AC), and why semantic constraints reject invalid programs before execution.
 
 **Veyra Visual Compiler** is built on a central principle:
 
@@ -41,7 +42,7 @@ For developers, educators, and students investigating language implementations, 
 
 Veyra treats compilation as a transparent series of well-defined data transformations:
 
-$$\text{Source} \longrightarrow \text{Tokens} \longrightarrow \text{AST} \longrightarrow \text{Semantic Validation} \longrightarrow \text{Symbol Table} \longrightarrow \text{Interpretation} \longrightarrow \text{Diagnostics} \longrightarrow \text{Output}$$
+$$\text{Source} \longrightarrow \text{Tokens} \longrightarrow \text{AST} \longrightarrow \text{Semantic Validation} \longrightarrow \text{Symbol Table} \longrightarrow \text{Three-Address Code (3AC)} \longrightarrow \text{Execution} \longrightarrow \text{Diagnostics} \longrightarrow \text{Output}$$
 
 Veyra is not an input-to-output demonstration tool. It is an interactive compiler engineering environment where every intermediate representation is produced by real compiler algorithms and exposed as structured data for inspection.
 
@@ -75,32 +76,33 @@ Veyra differentiates itself through its **architectural rigor and transparency**
 | Dimension | Typical Educational Visualizers | Veyra Visual Compiler |
 | :--- | :--- | :--- |
 | **Primary Focus** | Animation of syntax rules or toy demos | Inspectable compiler engineering environment |
-| **Pipeline Visibility** | Single stage or final output | End-to-end: Lexer $\to$ Parser $\to$ AST $\to$ Semantics $\to$ Symbols $\to$ Interpreter |
+| **Pipeline Visibility** | Single stage or final output | End-to-end: Lexer $\to$ Parser $\to$ AST $\to$ Semantics $\to$ Symbols $\to$ 3AC (IR) $\to$ Interpreter |
 | **Language Target** | Hardcoded snippets or subsets of C/Python | Custom formally-specified language (**VCL**) |
 | **Token Inspection** | Static token lists or text dumps | Interactive categorized stream with positions and metadata |
 | **AST Inspection** | Static diagrams or stringified trees | Interactive, collapsible hierarchical tree with source locations |
 | **Symbol Table** | Often omitted or simulated | Live scope-aware table tracking name, type, value, and scope level |
+| **Intermediate Code** | Not implemented or simulated | Real programmatic Three-Address Code (3AC) generation with temporaries and branch labels |
 | **Diagnostics** | Generic console errors or raw stack traces | Structured stage-attributed diagnostics (Lexical / Syntax / Semantic / Runtime) |
 | **Interpreter** | Often missing (parser-only) | Full tree-walking AST interpreter with stdout capture |
 | **API Architecture** | Monolithic or client-side only | Decoupled Flask REST API with structured JSON contracts |
-| **Automated Testing** | Minimal or manual testing | 38 automated unit & integration tests (`pytest`) |
-| **Extensibility** | Fixed demonstration scope | Tiered roadmap toward IR (Three-Address Code), CFG, and step-debugging |
+| **Automated Testing** | Minimal or manual testing | 58 automated unit & integration tests (`pytest`) |
+| **Extensibility** | Fixed demonstration scope | Tiered roadmap toward CFG construction, classical optimizations, and step-debugging |
 
 ---
 
 ## 4. Veyra Design Philosophy
 
 ### 1. Transparency over Black Boxes
-Every intermediate compiler artifact—from the token stream to the symbol table—should be observable as first-class structured data.
+Every intermediate compiler artifact—from the token stream to Three-Address Code—should be observable as first-class structured data.
 
 ### 2. Real Compiler Logic over Simulated Demos
-Visualization is driven by real scanner, parser, semantic, and interpreter outputs. No hardcoded or simulated trees.
+Visualization is driven by real scanner, parser, semantic, IR generator, and interpreter outputs. No hardcoded or simulated trees.
 
 ### 3. Correctness before Complexity
 A complete, correct, and robust compiler for an established language subset is far more valuable than an incomplete or buggy implementation of a large grammar.
 
 ### 4. Modular by Design
-Each compiler phase has a single responsibility and clean boundaries: `lexer.py`, `parser.py`, `ast_nodes.py`, `symbol_table.py`, `semantic.py`, `interpreter.py`, `errors.py`.
+Each compiler phase has a single responsibility and clean boundaries: `lexer.py`, `parser.py`, `ast_nodes.py`, `symbol_table.py`, `semantic.py`, `ir.py`, `interpreter.py`, `errors.py`.
 
 ### 5. Diagnostics are First-Class Data
 Errors are structured data carrying stage, message, severity, line, column, and actionable context—never raw unhandled Python exceptions.
@@ -109,7 +111,7 @@ Errors are structured data carrying stage, message, severity, line, column, and 
 While approachable in visual presentation, the internal compiler architecture adheres to production-grade software engineering and compiler design practices.
 
 ### 7. Built for Extension
-Phase 1 establishes the foundational vertical slice, designed specifically to scale toward intermediate representation (IR), Control Flow Graphs (CFG), and step-by-step execution debugging in subsequent phases.
+Phase 2 establishes real programmatic Three-Address Code (3AC), designed specifically to scale toward Control Flow Graphs (CFG), classical optimizations (constant folding, dead code elimination), and execution debugging in subsequent phases.
 
 ---
 
@@ -435,15 +437,17 @@ veyra-visual-compiler/
 │   ├── parser.py             # Recursive-descent hand-written parser
 │   ├── symbol_table.py       # Hierarchical scope & symbol tracking
 │   ├── semantic.py           # Static semantic validation & type analysis
+│   ├── ir.py                 # Three-Address Code (3AC) generator & IR data structures
 │   ├── interpreter.py        # Tree-walking AST evaluator
 │   └── compiler.py           # Unified pipeline driver & JSON bundler
 │
 ├── frontend/                 # Interactive web workspace (Vanilla JS & CSS)
-│   ├── index.html            # Main UI workspace layout
+│   ├── index.html            # Main UI workspace layout with 3AC panel & stepper
 │   ├── style.css             # Modern dark IDE styling & tree theme
-│   └── app.js                # Dynamic AST renderer & API client
+│   └── app.js                # Dynamic AST renderer, 3AC inspector & API client
 │
 ├── examples/                 # Curated educational VCL source files
+│   ├── phase2_demo.vcl       # Representative 3AC & conditional branching demo
 │   ├── arithmetic.vcl        # Baseline precedence demonstration
 │   ├── conditions.vcl        # If-else branching demonstration
 │   ├── scope.vcl             # Block scoping & mutations
@@ -454,8 +458,9 @@ veyra-visual-compiler/
 │   ├── test_lexer.py         # Lexer unit tests (9 tests)
 │   ├── test_parser.py        # Parser & precedence unit tests (8 tests)
 │   ├── test_semantic.py      # Semantic analysis unit tests (7 tests)
+│   ├── test_ir.py            # Three-Address Code (3AC) unit tests (12 tests)
 │   ├── test_interpreter.py   # AST interpreter unit tests (8 tests)
-│   └── test_integration.py   # Full pipeline integration tests (6 tests)
+│   └── test_integration.py   # Full pipeline integration & demo tests (14 tests)
 │
 ├── docs/                     # Documentation assets
 │   └── assets/               # Verified UI screenshots
@@ -480,18 +485,20 @@ Phase 1: FOUNDATION [COMPLETED]
 ├── REST API + Interactive IDE Workspace
 └── 38 Automated Tests
 
-Phase 2: DEPTH [PLANNED]
-├── Language Coverage: Loops ('while', 'for') & Functions
-├── Call Stack & Frame Visualization
-└── Step-by-Step Execution Tracing
+Phase 2: INTERMEDIATE REPRESENTATION & 3AC [COMPLETED]
+├── Linear Three-Address Code (3AC) Programmatic Generator
+├── Structured Instructions: Copy, BinaryOp, UnaryOp, Jumps, Labels, Print
+├── Deterministic Temporaries (t1, t2, ...) & Branch Labels (L1, L2, ...)
+├── First-Class 3AC Workspace Panel & Pipeline Stepper
+└── 58 Automated Tests Passing
 
 Phase 3: ADVANCED SYSTEMS [ROADMAP]
-├── Intermediate Representation (Three-Address Code / 3AC)
-├── Control Flow Graph (CFG) Visualizer
-└── Optimization Passes (Constant Folding, Dead Code)
+├── Control Flow Graph (CFG) Construction & Visualization
+├── Classical Optimizations (Constant Folding, Dead Code, Copy Propagation)
+└── User-Defined Functions, Loops ('while'), and Call Stack Visualization
 ```
 
-### Phase 1 — Foundation (Current)
+### Phase 1 — Foundation (Completed)
 - [x] Character-by-character scanner with line/column tracking
 - [x] Hand-written recursive-descent parser with full operator precedence
 - [x] Typed AST node hierarchy with visualizer serialization
@@ -502,18 +509,23 @@ Phase 3: ADVANCED SYSTEMS [ROADMAP]
 - [x] Interactive web workspace & REST API
 - [x] Comprehensive automated test suite (38 passing tests)
 
-### Phase 2 — Depth (Planned)
+### Phase 2 — Intermediate Representation & Observability (Completed)
+- [x] Programmatic Three-Address Code (3AC) generator consuming validated AST
+- [x] Deterministic temporary variable generation (`t1`, `t2`, ...) and branch labels (`L1`, `L2`, ...)
+- [x] Structured instruction representation: `Copy`, `BinaryOp`, `UnaryOp`, `Label`, `Jump`, `JumpIfFalse`, `JumpIfTrue`, `Print`
+- [x] AST immutability and non-mutation guarantees during IR emission
+- [x] Full integration into `VeyraCompiler` pipeline: Lexer $\to$ Parser $\to$ AST $\to$ Semantics $\to$ Symbols $\to$ IR (3AC) $\to$ Execution
+- [x] Dedicated 3AC workspace panel with syntax formatting, line numbering, and copy functionality
+- [x] Synchronized pipeline stepper reflecting real IR stage execution
+- [x] Comprehensive automated test suite (58 passing tests)
+
+### Phase 3 — Advanced Systems (Roadmap)
+- [ ] Interactive Control Flow Graph (CFG) visualizer with basic blocks and edges
+- [ ] Optimization passes visualizer (constant folding, algebraic simplification, dead code elimination)
 - [ ] User-defined functions with parameter bindings and return values
 - [ ] Runtime call stack and execution frame visualization
 - [ ] Looping constructs (`while`, `for`) with loop condition validation
-- [ ] Enhanced error recovery for multi-error diagnostics collection
-- [ ] Interactive step-by-step AST execution stepping in the UI
-
-### Phase 3 — Advanced Systems (Roadmap)
-- [ ] Intermediate Representation (IR): Linear Three-Address Code (3AC) generation
-- [ ] Interactive Control Flow Graph (CFG) visualizer with basic blocks and edges
-- [ ] Optimization passes visualizer (constant folding, algebraic simplification, dead code elimination)
-- [ ] Bytecode compilation and stack-based virtual machine evaluation
+- [ ] Bytecode compilation and virtual machine evaluation
 
 ---
 

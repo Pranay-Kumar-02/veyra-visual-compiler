@@ -835,7 +835,7 @@ body {
   height: 52px;
   background-color: var(--bg-surface);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   align-items: center;
   padding: 0 14px;
   gap: 12px;
@@ -861,4 +861,106 @@ body {
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--text-main);
+}
+
+/* ==========================================================================
+   VIEW: Intermediate Representation (3AC) Inspector
+   ========================================================================== */
+
+.ir-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  position: relative;
+}
+
+.ir-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-text:hover {
+  background-color: var(--bg-surface-card);
+  border-color: var(--border-med);
+  color: var(--text-main);
+}
+
+.ir-code-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background-color: var(--bg-canvas);
+}
+
+.ir-line-numbers {
+  padding: 14px 10px 14px 14px;
+  text-align: right;
+  color: var(--text-faint);
+  user-select: none;
+  border-right: 1px solid var(--border-subtle);
+  background-color: var(--bg-app);
+  min-width: 38px;
+}
+
+.ir-code-content {
+  flex: 1;
+  padding: 14px 16px;
+  margin: 0;
+  color: var(--text-main);
+  white-space: pre;
+  tab-size: 4;
+  overflow: visible;
+  font-family: var(--font-mono);
+}
+
+.ir-code-content .ir-label {
+  color: var(--sem-copper);
+  font-weight: 600;
+}
+
+.ir-code-content .ir-branch {
+  color: var(--sem-blue);
+  font-weight: 600;
+}
+
+.ir-code-content .ir-temp {
+  color: var(--accent);
+}
+
+.ir-code-content .ir-op {
+  color: var(--text-dim);
+}
+
+.ir-code-content .ir-print {
+  color: var(--sem-copper);
+  font-weight: 500;
+}
+
+.ir-empty-state, .ir-error-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }

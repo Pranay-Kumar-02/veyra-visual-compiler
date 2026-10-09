@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Inspector Elements
   const countSymbols = document.getElementById('countSymbols');
+  const countIr = document.getElementById('countIr');
   const countTokens = document.getElementById('countTokens');
   const countDiagnostics = document.getElementById('countDiagnostics');
   const tbodySymbols = document.getElementById('tbodySymbols');
@@ -116,9 +117,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const outputTerminal = document.getElementById('outputTerminal');
   const execStatusPill = document.getElementById('execStatusPill');
 
+  // IR Elements
+  const irContainer = document.getElementById('irContainer');
+  const irEmptyState = document.getElementById('irEmptyState');
+  const irCodeWrapper = document.getElementById('irCodeWrapper');
+  const irLineNumbers = document.getElementById('irLineNumbers');
+  const irCodeContent = document.getElementById('irCodeContent');
+  const irErrorState = document.getElementById('irErrorState');
+  const irErrorMessage = document.getElementById('irErrorMessage');
+  const btnCopyIr = document.getElementById('btnCopyIr');
+
   // Telemetry
   const telTokens = document.getElementById('telTokens');
   const telSymbols = document.getElementById('telSymbols');
+  const telIr = document.getElementById('telIr');
   const telDiags = document.getElementById('telDiags');
   const telDuration = document.getElementById('telDuration');
 
@@ -137,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ast: document.getElementById('step-ast'),
     sem: document.getElementById('step-sem'),
     sym: document.getElementById('step-sym'),
+    ir: document.getElementById('step-ir'),
     exec: document.getElementById('step-exec'),
   };
 
@@ -144,12 +157,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeTokens = [];
   let tokenCategoryFilter = 'all';
   let activeSymbols = [];
+  let activeIrCode = '';
   let d3Svg = null;
   let d3Zoom = null;
   let currentAstData = null;
   let errorLineMarks = [];
 
   const PRESET_PROGRAMS = {
+    'phase2_demo.vcl': `let score = 20;\nlet bonus = 5;\nlet result = score + bonus * 2;\n\nif (result >= 30) {\n    print(result);\n} else {\n    print(0);\n}`,
     'arithmetic.vcl': `let x = 10 + 5 * 2;\nprint(x);`,
     'conditions.vcl': `let score = 85;\nlet threshold = 50;\n\nif (score >= threshold) {\n    print(1);\n} else {\n    print(0);\n}`,
     'scope.vcl': `let a = 10;\nlet b = 20;\nlet total = 0;\n\n{\n    let factor = 3;\n    total = (a + b) * factor;\n}\n\nprint(total);`,
@@ -266,6 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
       pipelineSteps.sem.classList.add('passed');
       pipelineSteps.sym.classList.add('passed');
     }
+    if (executed.includes('IR Generation')) {
+      if (pipelineSteps.ir) pipelineSteps.ir.classList.add('passed');
+    }
     if (executed.includes('Interpreter')) pipelineSteps.exec.classList.add('passed');
 
     if (!success && diagnostics && diagnostics.length > 0) {
@@ -308,14 +326,17 @@ document.addEventListener('DOMContentLoaded', () => {
     activeSymbols = result.symbol_table || [];
     renderSymbolGrid(activeSymbols);
 
-    // 3. Token Stream View
+    // 3. Intermediate Representation (3AC) View
+    renderIr(result.ir, result.ir_code, result.success, result.diagnostics);
+
+    // 4. Token Stream View
     activeTokens = result.tokens || [];
     renderTokenGrid(activeTokens);
 
-    // 4. Diagnostics View
+    // 5. Diagnostics View
     renderDiagnostics(result.diagnostics);
 
-    // 5. Output View & Telemetry
+    // 6. Output View & Telemetry
     renderOutputAndTelemetry(result);
   }
 
@@ -669,12 +690,112 @@ document.addEventListener('DOMContentLoaded', () => {
     const m = result.metrics || {};
     telTokens.textContent = m.token_count || 0;
     telSymbols.textContent = m.symbol_count || 0;
+    if (telIr) telIr.textContent = m.ir_instruction_count || 0;
     telDiags.textContent = m.diagnostic_count || 0;
     telDuration.textContent = `${m.diagnostic_pipeline_duration_ms || 0.0} ms`;
   }
 
+  // ---------------------------------------------------------------------------
+  // 11b. Three-Address Code (3AC) Intermediate Representation Rendering
+  // ---------------------------------------------------------------------------
+
+  function renderIr(irData, irCode, success, diagnostics) {
+    activeIrCode = irCode || '';
+
+    if (irData && irData.instructions && irData.instructions.length > 0) {
+      if (countIr) countIr.textContent = irData.instruction_count || irData.instructions.length;
+      if (telIr) telIr.textContent = irData.instruction_count || irData.instructions.length;
+
+      if (irEmptyState) irEmptyState.style.display = 'none';
+      if (irErrorState) irErrorState.style.display = 'none';
+      if (irCodeWrapper) irCodeWrapper.style.display = 'flex';
+
+      const rawLines = irCode.split('\n');
+      const lineNums = rawLines.map((_, idx) => idx + 1).join('\n');
+      if (irLineNumbers) irLineNumbers.textContent = lineNums;
+
+      if (irCodeContent) irCodeContent.innerHTML = formatIrSyntax(rawLines);
+    } else if (!success) {
+      if (countIr) countIr.textContent = '0';
+      if (telIr) telIr.textContent = '0';
+      if (irCodeWrapper) irCodeWrapper.style.display = 'none';
+      if (irEmptyState) irEmptyState.style.display = 'none';
+      if (irErrorState) irErrorState.style.display = 'flex';
+
+      const diagMsg = (diagnostics && diagnostics.length > 0)
+        ? `${diagnostics[0].stage}: ${diagnostics[0].message}`
+        : 'Compilation halted prior to IR generation due to diagnostic errors.';
+      if (irErrorMessage) irErrorMessage.textContent = diagMsg;
+    } else {
+      if (countIr) countIr.textContent = '0';
+      if (telIr) telIr.textContent = '0';
+      if (irCodeWrapper) irCodeWrapper.style.display = 'none';
+      if (irErrorState) irErrorState.style.display = 'none';
+      if (irEmptyState) irEmptyState.style.display = 'flex';
+    }
+  }
+
+  function formatIrSyntax(lines) {
+    return lines
+      .map((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return '';
+        const isIndent = line.startsWith('  ');
+        const prefix = isIndent ? '  ' : '';
+
+        // Label line (e.g. L1:)
+        if (trimmed.endsWith(':')) {
+          return `${prefix}<span class="ir-label">${escapeHtml(trimmed)}</span>`;
+        }
+
+        // Branching lines (e.g. goto L2, if_false t1 goto L1)
+        if (trimmed.startsWith('goto ')) {
+          const parts = trimmed.split(' ');
+          return `${prefix}<span class="ir-branch">${parts[0]}</span> <span class="ir-label">${escapeHtml(parts[1])}</span>`;
+        }
+        if (trimmed.startsWith('if_false ') || trimmed.startsWith('if_true ')) {
+          const parts = trimmed.split(' ');
+          return `${prefix}<span class="ir-branch">${parts[0]}</span> <span class="ir-temp">${escapeHtml(parts[1])}</span> <span class="ir-branch">${parts[2]}</span> <span class="ir-label">${escapeHtml(parts[3])}</span>`;
+        }
+
+        // Print line (e.g. print result)
+        if (trimmed.startsWith('print ')) {
+          const parts = trimmed.split(' ');
+          return `${prefix}<span class="ir-print">${parts[0]}</span> <span class="ir-temp">${escapeHtml(parts.slice(1).join(' '))}</span>`;
+        }
+
+        // Assignment / Binary / Unary (e.g. t1 = 5 * 2, x = t2)
+        if (trimmed.includes(' = ')) {
+          const eqIdx = trimmed.indexOf(' = ');
+          const target = trimmed.substring(0, eqIdx);
+          const expr = trimmed.substring(eqIdx + 3);
+
+          const targetHtml = /^t\d+$/.test(target)
+            ? `<span class="ir-temp">${escapeHtml(target)}</span>`
+            : `<span class="ir-var">${escapeHtml(target)}</span>`;
+
+          const exprTokens = expr
+            .split(' ')
+            .map((tok) => {
+              if (/^t\d+$/.test(tok)) return `<span class="ir-temp">${escapeHtml(tok)}</span>`;
+              if (['+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>=', '&&', '||'].includes(tok)) {
+                return `<span class="ir-op">${escapeHtml(tok)}</span>`;
+              }
+              return escapeHtml(tok);
+            })
+            .join(' ');
+
+          return `${prefix}${targetHtml} <span class="ir-op">=</span> ${exprTokens}`;
+        }
+
+        return `${prefix}${escapeHtml(trimmed)}`;
+      })
+      .join('\n');
+  }
+
   function renderFatalFailure(msg) {
     outputTerminal.textContent = `[Fatal Error]: ${msg}`;
+    renderIr(null, '', false, [{ stage: 'System Error', message: msg }]);
     diagnosticsList.innerHTML = `
       <div class="diag-item">
         <div class="diag-meta-row">
@@ -701,11 +822,29 @@ document.addEventListener('DOMContentLoaded', () => {
   // 12. Controls & Preset Loading
   // ---------------------------------------------------------------------------
 
+  // Copy 3AC button handler
+  if (btnCopyIr) {
+    btnCopyIr.addEventListener('click', async () => {
+      if (!activeIrCode) return;
+      try {
+        await navigator.clipboard.writeText(activeIrCode);
+        const span = btnCopyIr.querySelector('span');
+        const orig = span ? span.textContent : 'Copy 3AC';
+        if (span) span.textContent = 'Copied!';
+        setTimeout(() => {
+          if (span) span.textContent = orig;
+        }, 1500);
+      } catch (e) {
+        console.warn('Clipboard write failed:', e);
+      }
+    });
+  }
+
   btnRun.addEventListener('click', runCompiler);
 
   btnResetCode.addEventListener('click', () => {
     const key = presetSelect.value;
-    const code = PRESET_PROGRAMS[key] || PRESET_PROGRAMS['arithmetic.vcl'];
+    const code = PRESET_PROGRAMS[key] || PRESET_PROGRAMS['phase2_demo.vcl'] || PRESET_PROGRAMS['arithmetic.vcl'];
     if (editor) editor.setValue(code);
     runCompiler();
   });
