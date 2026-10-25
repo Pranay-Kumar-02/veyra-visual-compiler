@@ -10,6 +10,20 @@ export interface PresetProgram {
 }
 
 export const PRESET_PROGRAMS: Record<string, PresetProgram> = {
+  'phase3_demo': {
+    id: 'phase3_demo',
+    name: 'Phase 3 Flagship: CFG & Optimization',
+    description: 'Demonstrates Control Flow Graph construction, modular 3AC optimization, and runtime debugger trace.',
+    code: `let score = 20;
+let bonus = 5;
+let result = score + bonus * 2;
+
+if (result >= 30) {
+    print(result);
+} else {
+    print(0);
+}`,
+  },
   'phase2_demo': {
     id: 'phase2_demo',
     name: 'Phase 2 Flagship: 3AC & Branching',

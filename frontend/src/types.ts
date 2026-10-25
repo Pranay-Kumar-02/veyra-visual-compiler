@@ -1,5 +1,7 @@
 /**
  * Veyra Visual Compiler — Core Data & Pipeline Types
+ * Supports Review 1, 2, and 3: AST, Symbol Table, 3AC IR,
+ * Control Flow Graph (CFG), 3AC Optimization, and Step-by-Step Debugger.
  */
 
 export interface TokenItem {
@@ -55,6 +57,117 @@ export interface IRData {
   label_count: number;
 }
 
+// ----------------------------------------------------------------------------
+// Phase 3: Control Flow Graph (CFG) Types
+// ----------------------------------------------------------------------------
+export interface CFGBlock {
+  id: string;
+  index: number;
+  instructions: IRInstructionItem[];
+  instruction_count: number;
+  predecessors: string[];
+  successors: string[];
+  is_entry: boolean;
+  is_exit: boolean;
+  reachable: boolean;
+  labels: string[];
+  lines: string[];
+}
+
+export interface CFGEdge {
+  from_block: string;
+  to_block: string;
+  edge_type: 'unconditional' | 'true' | 'false' | 'fallthrough' | 'backedge';
+  condition?: string | null;
+  is_backedge?: boolean;
+}
+
+export interface CFGData {
+  blocks: CFGBlock[];
+  edges: CFGEdge[];
+  entry_block_id: string | null;
+  exit_block_ids: string[];
+  block_count: number;
+  edge_count: number;
+  validation_errors: string[];
+  is_valid: boolean;
+}
+
+// ----------------------------------------------------------------------------
+// Phase 3: 3AC Optimization Types
+// ----------------------------------------------------------------------------
+export interface TransformationItem {
+  pass_name: string;
+  original: string;
+  optimized: string;
+  reason: string;
+  line: number;
+  column: number;
+}
+
+export interface OptimizationReportData {
+  original_code: string;
+  optimized_code: string;
+  original_instruction_count: number;
+  optimized_instruction_count: number;
+  reduction_count: number;
+  transformation_count: number;
+  transformations: TransformationItem[];
+  metrics: {
+    original_count: number;
+    optimized_count: number;
+    instructions_removed: number;
+    transformations_applied: number;
+    passes_executed: Record<string, number>;
+  };
+  is_valid: boolean;
+  validation_errors: string[];
+}
+
+// ----------------------------------------------------------------------------
+// Phase 3: Step-by-Step Debugger Types
+// ----------------------------------------------------------------------------
+export interface VariableSnapshot {
+  value: any;
+  type: string;
+}
+
+export interface BranchDecisionInfo {
+  condition_line: number;
+  evaluated_result: boolean;
+  branch_taken: string;
+}
+
+export interface DebugEventItem {
+  step_index: number;
+  event_type: 'start' | 'step' | 'var_declare' | 'assignment' | 'branch_decision' | 'print' | 'runtime_error' | 'completed';
+  line: number;
+  column: number;
+  node_type: string;
+  description: string;
+  variables: Record<string, VariableSnapshot>;
+  changed_variable?: string | null;
+  branch_info?: BranchDecisionInfo | null;
+  output_so_far: string[];
+  error?: {
+    message: string;
+    line: number;
+    column: number;
+    hint?: string | null;
+  } | null;
+}
+
+export interface DebugTraceData {
+  events: DebugEventItem[];
+  total_steps: number;
+  completed_normally: boolean;
+  final_output: string[];
+  runtime_error?: string | null;
+}
+
+// ----------------------------------------------------------------------------
+// Diagnostic & Telemetry Types
+// ----------------------------------------------------------------------------
 export interface DiagnosticItem {
   stage: string;
   message: string;
@@ -69,6 +182,10 @@ export interface MetricsData {
   token_count: number;
   symbol_count: number;
   ir_instruction_count: number;
+  optimized_instruction_count?: number;
+  cfg_block_count?: number;
+  cfg_edge_count?: number;
+  debug_step_count?: number;
   diagnostic_count: number;
   output_line_count: number;
   diagnostic_pipeline_duration_ms: number;
@@ -81,6 +198,11 @@ export interface CompilationResult {
   symbol_table: SymbolItem[];
   ir: IRData | null;
   ir_code: string;
+  cfg?: CFGData | null;
+  optimized_ir?: IRData | null;
+  optimized_ir_code?: string;
+  optimization_report?: OptimizationReportData | null;
+  debug_trace?: DebugTraceData | null;
   diagnostics: DiagnosticItem[];
   output: string;
   output_lines: string[];
@@ -88,6 +210,6 @@ export interface CompilationResult {
   metrics: MetricsData;
 }
 
-export type ViewTab = 'ast' | 'ir' | 'symbols' | 'tokens' | 'diagnostics' | 'output';
+export type ViewTab = 'ast' | 'ir' | 'cfg' | 'optimizer' | 'debugger' | 'symbols' | 'tokens' | 'diagnostics' | 'output';
 
 export type WorkspaceMode = '3d-spatial' | 'split-workbench' | 'focus-editor';

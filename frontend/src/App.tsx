@@ -10,6 +10,9 @@ import { ThreePipelineVisualizer } from './components/ThreePipelineVisualizer';
 import { EditorPane } from './components/EditorPane';
 import { AstVisualizer } from './components/AstVisualizer';
 import { ThreeAddressCodePane } from './components/ThreeAddressCodePane';
+import { CfgVisualizer } from './components/CfgVisualizer';
+import { OptimizerPane } from './components/OptimizerPane';
+import { DebuggerPane } from './components/DebuggerPane';
 import { SymbolTablePane } from './components/SymbolTablePane';
 import { TokenStreamPane } from './components/TokenStreamPane';
 import { DiagnosticsPane } from './components/DiagnosticsPane';
@@ -17,8 +20,8 @@ import { OutputTerminal } from './components/OutputTerminal';
 import { TelemetryBar } from './components/TelemetryBar';
 
 export const App: React.FC = () => {
-  const [selectedPreset, setSelectedPreset] = useState<string>('phase2_demo');
-  const [code, setCode] = useState<string>(PRESET_PROGRAMS['phase2_demo'].code);
+  const [selectedPreset, setSelectedPreset] = useState<string>('phase3_demo');
+  const [code, setCode] = useState<string>(PRESET_PROGRAMS['phase3_demo']?.code || PRESET_PROGRAMS['phase2_demo'].code);
   const [mode, setMode] = useState<WorkspaceMode>('split-workbench'); // Default to Workbench
   const [activeTab, setActiveTab] = useState<ViewTab>('ast');
   const [isCompiling, setIsCompiling] = useState<boolean>(false);
@@ -68,6 +71,11 @@ export const App: React.FC = () => {
         symbol_table: [],
         ir: null,
         ir_code: '',
+        cfg: null,
+        optimized_ir: null,
+        optimized_ir_code: '',
+        optimization_report: null,
+        debug_trace: null,
         diagnostics: [
           {
             stage: 'System Error',
@@ -160,6 +168,7 @@ export const App: React.FC = () => {
   };
 
   const diagCount = result?.diagnostics?.length || 0;
+  const optReduction = result?.optimization_report?.reduction_count || 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
@@ -225,6 +234,36 @@ export const App: React.FC = () => {
                     </button>
 
                     <button
+                      className={`tab-btn ${activeTab === 'cfg' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('cfg')}
+                    >
+                      <span>CFG</span>
+                      {result?.cfg && (
+                        <span className="tab-count">({result.cfg.block_count})</span>
+                      )}
+                    </button>
+
+                    <button
+                      className={`tab-btn ${activeTab === 'optimizer' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('optimizer')}
+                    >
+                      <span>Optimizer</span>
+                      {optReduction > 0 && (
+                        <span className="tab-count" style={{ color: '#10b981' }}>(-{optReduction})</span>
+                      )}
+                    </button>
+
+                    <button
+                      className={`tab-btn ${activeTab === 'debugger' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('debugger')}
+                    >
+                      <span>Debugger</span>
+                      {result?.debug_trace && (
+                        <span className="tab-count" style={{ color: '#ec4899' }}>({result.debug_trace.total_steps})</span>
+                      )}
+                    </button>
+
+                    <button
                       className={`tab-btn ${activeTab === 'symbols' ? 'active' : ''}`}
                       onClick={() => setActiveTab('symbols')}
                     >
@@ -276,6 +315,34 @@ export const App: React.FC = () => {
                     <ThreeAddressCodePane
                       ir={result?.ir || null}
                       irCode={result?.ir_code || ''}
+                    />
+                  )}
+
+                  {activeTab === 'cfg' && (
+                    <CfgVisualizer
+                      cfg={result?.cfg || null}
+                      onSelectBlock={(block) => {
+                        if (block.instructions.length > 0 && block.instructions[0].line > 0) {
+                          handleSelectLocation(block.instructions[0].line, block.instructions[0].column);
+                        }
+                      }}
+                    />
+                  )}
+
+                  {activeTab === 'optimizer' && (
+                    <OptimizerPane
+                      originalIr={result?.ir || null}
+                      originalCode={result?.ir_code || ''}
+                      optimizedIr={result?.optimized_ir || null}
+                      optimizedCode={result?.optimized_ir_code || ''}
+                      report={result?.optimization_report || null}
+                    />
+                  )}
+
+                  {activeTab === 'debugger' && (
+                    <DebuggerPane
+                      trace={result?.debug_trace || null}
+                      onHighlightLine={handleSelectLocation}
                     />
                   )}
 

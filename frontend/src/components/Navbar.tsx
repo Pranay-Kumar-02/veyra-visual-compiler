@@ -32,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span className="brand-title">Veyra</span>
-            <span className="brand-version">v2.0</span>
+            <span className="brand-version">v3.0</span>
           </div>
         </div>
 
