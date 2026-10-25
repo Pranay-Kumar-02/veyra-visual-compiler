@@ -8,6 +8,7 @@ interface EditorPaneProps {
   errorLine: number | null;
   cursorPos: { line: number; col: number };
   onCursorChange: (pos: { line: number; col: number }) => void;
+  isFocusMode?: boolean;
 }
 
 export const EditorPane: React.FC<EditorPaneProps> = ({
@@ -17,6 +18,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   errorLine,
   cursorPos,
   onCursorChange,
+  isFocusMode = false,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [copied, setCopied] = useState(false);
@@ -65,13 +67,29 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   };
 
   return (
-    <div className="pane-editor">
+    <div className={`pane-editor ${isFocusMode ? 'focus-expanded' : ''}`}>
       {/* Tab bar */}
-      <div className="pane-tabbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-main)', padding: '4px 6px' }}>
+      <div className="pane-tabbar" style={{ height: 38, padding: '0 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-main)' }}>
             main.vcl
           </span>
+          {isFocusMode && (
+            <span
+              style={{
+                fontSize: 9.5,
+                fontWeight: 700,
+                color: 'var(--accent)',
+                background: 'var(--accent-subtle)',
+                border: '1px solid var(--accent-border)',
+                padding: '1px 6px',
+                borderRadius: 'var(--radius-xs)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              FOCUS MODE
+            </span>
+          )}
           {errorLine && (
             <span style={{ fontSize: 10, color: 'var(--color-error)', fontFamily: 'var(--font-mono)' }}>
               line {errorLine}
@@ -79,20 +97,27 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {isFocusMode && (
+            <span style={{ fontSize: 10.5, color: 'var(--text-muted)', marginRight: 6 }}>
+              Press <kbd>Ctrl+↵</kbd> to compile
+            </span>
+          )}
           <button
-            className="btn-icon"
+            className="pane-action-btn"
             onClick={handleCopy}
-            title={copied ? 'Copied' : 'Copy code'}
+            title={copied ? 'Copied code to clipboard' : 'Copy code to clipboard'}
           >
-            {copied ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : <Copy size={12} />}
+            {copied ? <Check size={11} style={{ color: 'var(--color-success)' }} /> : <Copy size={11} />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
           <button
-            className="btn-icon"
+            className="pane-action-btn"
             onClick={() => onChangeCode('')}
-            title="Clear editor"
+            title="Clear editor code"
           >
-            <RotateCcw size={12} />
+            <RotateCcw size={11} />
+            <span>Clear</span>
           </button>
         </div>
       </div>
@@ -116,8 +141,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
                     : isCurrent
                     ? 'var(--text-main)'
                     : 'var(--text-faint)',
-                  fontSize: 11,
-                  lineHeight: '1.6',
+                  fontSize: 11.5,
+                  lineHeight: '1.65',
                 }}
               >
                 {lineNum}
@@ -143,17 +168,20 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       </div>
 
       {/* Bottom Status Bar */}
-      <div className="editor-status-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="editor-status-bar" style={{ height: 26, padding: '0 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>VCL</span>
           <span>UTF-8</span>
           <span>Spaces: 4</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>Ln {cursorPos.line}, Col {cursorPos.col}</span>
           <span>{lineCount} lines</span>
+          <span>{code.length} chars</span>
         </div>
       </div>
     </div>
   );
 };
+
+export default EditorPane;

@@ -201,10 +201,18 @@ export const App: React.FC = () => {
             result={result}
           />
         ) : (
-          /* Workbench & Focus Modes */
-          <div className="workbench-split">
+          <div className={`workbench-split ${mode === 'focus-editor' ? 'mode-focus' : ''}`}>
             {/* Source Editor Pane */}
-            <div style={{ width: mode === 'focus-editor' ? '100%' : editorWidth, display: 'flex' }}>
+            <div
+              className={`editor-pane-wrapper ${mode === 'focus-editor' ? 'is-focus' : ''}`}
+              style={{
+                width: mode === 'focus-editor' ? '100%' : editorWidth,
+                flex: mode === 'focus-editor' ? 1 : 'none',
+                display: 'flex',
+                height: '100%',
+                minWidth: 0,
+              }}
+            >
               <EditorPane
                 code={code}
                 onChangeCode={setCode}
@@ -212,6 +220,7 @@ export const App: React.FC = () => {
                 errorLine={errorLine}
                 cursorPos={cursorPos}
                 onCursorChange={setCursorChange}
+                isFocusMode={mode === 'focus-editor'}
               />
             </div>
 

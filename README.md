@@ -130,6 +130,7 @@ All screenshots represent real compiler outputs captured from the running instan
 | **Diagnostics & Error Trapping** | [View Screenshot](docs/assets/05_invalid_input_diagnostic.png) | Structured syntax error reporting at Line 1, Column 14 with recovery guidance and line markers. |
 | **Linear 3AC Stream** | [View Screenshot](docs/assets/06_three_address_code.png) | Linearized 3AC instructions with explicit temporaries and jump labels. |
 | **Automated Test Results** | [View Screenshot](docs/assets/07_test_results.png) | Terminal execution showing 89 passing automated tests with 100% pass rate. |
+| **Focus Mode** | [View Screenshot](docs/assets/08_focus_mode.png) | Full-width distraction-free code editor with responsive status bar, telemetry, and unconstrained editor viewport. |
 
 ---
 

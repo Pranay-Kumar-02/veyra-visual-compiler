@@ -331,6 +331,9 @@ Screenshots were captured from the running instance at `http://127.0.0.1:5000` a
 7. **[`evidence/07_test_results.png`](file:///c:/Users/PRANAY%20KUMAR/OneDrive/Desktop/veyra-visual-compiler/evidence/07_test_results.png):**  
    *Automated Test Suite Execution:* Terminal output demonstrating 89 passed test cases with 100% success rate across all 10 test modules.
 
+8. **[`evidence/08_focus_mode.png`](file:///c:/Users/PRANAY%20KUMAR/OneDrive/Desktop/veyra-visual-compiler/evidence/08_focus_mode.png):**  
+   *Full-Width Focus Mode:* Demonstrates unconstrained editor width across 100% of the viewport, styled mode pill, line-number synchronization, live status bar (cursor position, character/line count, shortcut indicator), and distraction-free compilation workflow.
+
 ---
 
 ## 10. Measured Optimization Results

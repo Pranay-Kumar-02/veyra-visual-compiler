@@ -414,14 +414,40 @@ kbd {
   display: flex;
   overflow: hidden;
   background-color: var(--bg-app);
+  width: 100%;
+  height: 100%;
+}
+
+.workbench-split.mode-focus {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.editor-pane-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.editor-pane-wrapper.is-focus {
+  flex: 1;
+  width: 100% !important;
+  height: 100%;
 }
 
 .pane-editor {
+  flex: 1;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-surface);
   overflow: hidden;
-  min-width: 320px;
+  min-width: 0;
 }
 
 .pane-inspector {
@@ -531,23 +557,26 @@ kbd {
    ========================================================================== */
 .editor-container {
   flex: 1;
+  width: 100%;
+  height: 100%;
   display: flex;
   overflow: hidden;
   background-color: var(--bg-input);
   position: relative;
   font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
+  min-width: 0;
 }
 
 .editor-line-numbers {
-  padding: 12px 8px 12px 10px;
+  padding: 14px 10px 14px 12px;
   text-align: right;
   color: var(--text-faint);
   user-select: none;
   border-right: 1px solid var(--border-subtle);
   background-color: var(--bg-surface);
-  min-width: 38px;
+  min-width: 44px;
 }
 
 .editor-line-number.has-error {
@@ -557,7 +586,10 @@ kbd {
 
 .editor-textarea {
   flex: 1;
-  padding: 12px 14px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 14px 18px;
   margin: 0;
   background: transparent;
   color: var(--text-main);
@@ -565,8 +597,8 @@ kbd {
   outline: none;
   resize: none;
   font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
   white-space: pre;
   tab-size: 4;
 }
