@@ -5,6 +5,17 @@ import {
   ViewTab,
   WorkspaceMode
 } from './types';
+import {
+  Layers,
+  Cpu,
+  GitBranch,
+  Zap,
+  Bug,
+  Table,
+  ListFilter,
+  AlertCircle,
+  Terminal,
+} from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { ThreePipelineVisualizer } from './components/ThreePipelineVisualizer';
 import { EditorPane } from './components/EditorPane';
@@ -168,7 +179,6 @@ export const App: React.FC = () => {
   };
 
   const diagCount = result?.diagnostics?.length || 0;
-  const optReduction = result?.optimization_report?.reduction_count || 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
@@ -220,6 +230,7 @@ export const App: React.FC = () => {
                       className={`tab-btn ${activeTab === 'ast' ? 'active' : ''}`}
                       onClick={() => setActiveTab('ast')}
                     >
+                      <Layers size={13} />
                       <span>AST</span>
                     </button>
 
@@ -227,69 +238,58 @@ export const App: React.FC = () => {
                       className={`tab-btn ${activeTab === 'ir' ? 'active' : ''}`}
                       onClick={() => setActiveTab('ir')}
                     >
+                      <Cpu size={13} />
                       <span>3AC / IR</span>
-                      {result?.ir && (
-                        <span className="tab-count">({result.ir.instruction_count})</span>
-                      )}
                     </button>
 
                     <button
                       className={`tab-btn ${activeTab === 'cfg' ? 'active' : ''}`}
                       onClick={() => setActiveTab('cfg')}
                     >
+                      <GitBranch size={13} />
                       <span>CFG</span>
-                      {result?.cfg && (
-                        <span className="tab-count">({result.cfg.block_count})</span>
-                      )}
                     </button>
 
                     <button
                       className={`tab-btn ${activeTab === 'optimizer' ? 'active' : ''}`}
                       onClick={() => setActiveTab('optimizer')}
                     >
+                      <Zap size={13} />
                       <span>Optimizer</span>
-                      {optReduction > 0 && (
-                        <span className="tab-count" style={{ color: '#10b981' }}>(-{optReduction})</span>
-                      )}
                     </button>
 
                     <button
                       className={`tab-btn ${activeTab === 'debugger' ? 'active' : ''}`}
                       onClick={() => setActiveTab('debugger')}
                     >
+                      <Bug size={13} />
                       <span>Debugger</span>
-                      {result?.debug_trace && (
-                        <span className="tab-count" style={{ color: '#ec4899' }}>({result.debug_trace.total_steps})</span>
-                      )}
                     </button>
 
                     <button
                       className={`tab-btn ${activeTab === 'symbols' ? 'active' : ''}`}
                       onClick={() => setActiveTab('symbols')}
                     >
+                      <Table size={13} />
                       <span>Symbols</span>
-                      {result?.symbol_table && (
-                        <span className="tab-count">({result.symbol_table.length})</span>
-                      )}
                     </button>
 
                     <button
                       className={`tab-btn ${activeTab === 'tokens' ? 'active' : ''}`}
                       onClick={() => setActiveTab('tokens')}
                     >
+                      <ListFilter size={13} />
                       <span>Tokens</span>
-                      {result?.tokens && (
-                        <span className="tab-count">({result.tokens.length})</span>
-                      )}
                     </button>
 
                     <button
                       className={`tab-btn ${activeTab === 'diagnostics' ? 'active' : ''}`}
                       onClick={() => setActiveTab('diagnostics')}
                     >
+                      <AlertCircle size={13} />
                       <span>Diagnostics</span>
                       {diagCount > 0 && (
-                        <span className="tab-count has-error">({diagCount})</span>
+                        <span className="tab-count has-error">{diagCount}</span>
                       )}
                     </button>
 
@@ -297,6 +297,7 @@ export const App: React.FC = () => {
                       className={`tab-btn ${activeTab === 'output' ? 'active' : ''}`}
                       onClick={() => setActiveTab('output')}
                     >
+                      <Terminal size={13} />
                       <span>Output</span>
                     </button>
                   </div>
