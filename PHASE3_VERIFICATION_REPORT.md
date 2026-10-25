@@ -311,16 +311,16 @@ tests\test_semantic.py .......                                           [100%]
 Screenshots were captured from the running instance at `http://127.0.0.1:5000` and stored in `evidence/`:
 
 1. **[`evidence/01_integrated_workspace.png`](file:///c:/Users/PRANAY%20KUMAR/OneDrive/Desktop/veyra-visual-compiler/evidence/01_integrated_workspace.png):**  
-   *The Integrated Veyra Workspace:* Shows the code editor loaded with Phase 3 Flagship code, AST tree visualization, top navigation bar (v3.0), status pill Ready (3.24ms), and complete tab bar (`AST`, `3AC / IR`, `CFG`, `Optimizer`, `Debugger`, `Symbols`, `Tokens`, `Diagnostics`, `Output`).
+   *The Integrated Veyra Workspace:* Demonstrates the redesigned charcoal/graphite workspace loaded with Phase 3 Flagship code, AST tree visualization, v3.0 navigation bar with telemetry pill, and clean icon-enhanced tabs (`AST`, `3AC / IR`, `CFG`, `Optimizer`, `Debugger`, `Symbols`, `Tokens`, `Diagnostics`, `Output`).
 
 2. **[`evidence/02_cfg_visualization.png`](file:///c:/Users/PRANAY%20KUMAR/OneDrive/Desktop/veyra-visual-compiler/evidence/02_cfg_visualization.png):**  
-   *CFG Visualization for Conditional Program:* Displays 4 partitioned basic blocks (`B0` Entry, `B1` Then, `B2` Else, `B3` Exit), instruction listings, directed edge badges (`False Branch -> B2`, `True Branch -> B1`, `Goto -> B3`, `Fall-through -> B3`), and the interactive Block Inspector panel for `B0`.
+   *CFG Visualization for Conditional Program:* Displays 4 partitioned basic blocks (`B0` Entry, `B1` Then, `B2` Else, `B3` Exit), instruction listings, directed edge badges (`False Branch -> B2`, `True Branch -> B1`, `Goto -> B3`, `Fall-through -> B3`), and the interactive Block Inspector panel.
 
 3. **[`evidence/03_original_vs_optimized_3ac.png`](file:///c:/Users/PRANAY%20KUMAR/OneDrive/Desktop/veyra-visual-compiler/evidence/03_original_vs_optimized_3ac.png):**  
-   *Original vs Optimized 3AC:* Side-by-side comparison showing Original 3AC (12 instructions) vs Optimized 3AC (10 instructions), 2 eliminated instructions, 10 transformations applied, and the detailed transformation log explaining Constant Propagation, Constant Folding, and Dead Code Elimination.
+   *Original vs Optimized 3AC:* Features the analytical comparison banner (`12 insts -> 10 insts`, `-2 eliminated (16.7%)`, `10 transformations`), fully styled `Copy Optimized` action button, side-by-side synchronized 3AC code panes, and structured transformation logs.
 
 4. **[`evidence/04_step_debugger.png`](file:///c:/Users/PRANAY%20KUMAR/OneDrive/Desktop/veyra-visual-compiler/evidence/04_step_debugger.png):**  
-   *Step-by-Step Debugger Runtime State:* Active statement banner for Line 3 (`Declared variable 'result' = 30`), synchronized line highlight in editor, Variables Watch Window (`bonus = 5`, `result = 30 (UPDATED)`, `score = 20`), progress slider at Step 4 of 7, and playback controls.
+   *Step-by-Step Debugger Runtime State:* Showcases the redesigned execution toolbar (`Reset`, `Step Back`, styled cyan `Play`, `Step Next`, `To End`), custom timeline range slider, active statement banner with line/col badges, Variables Watch Window (`bonus = 5`, `result = 30 (UPDATED)`, `score = 20`), and unclipped standard output console.
 
 5. **[`evidence/05_invalid_input_diagnostic.png`](file:///c:/Users/PRANAY%20KUMAR/OneDrive/Desktop/veyra-visual-compiler/evidence/05_invalid_input_diagnostic.png):**  
    *Genuine Invalid-Input Diagnostic:* Demonstrates error handling on `let x = 10 + ;`, reporting Syntax Error at Line 1, Column 14 with recovery hint, error pill in navigation, and editor coordinate marker.
