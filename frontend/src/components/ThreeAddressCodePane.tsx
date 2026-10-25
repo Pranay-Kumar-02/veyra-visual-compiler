@@ -101,10 +101,9 @@ export const ThreeAddressCodePane: React.FC<ThreeAddressCodePaneProps> = ({ ir, 
           </div>
 
           <button
-            className="btn btn-secondary"
+            className="pane-action-btn"
             onClick={handleCopy}
-            style={{ padding: '3px 7px', fontSize: 11 }}
-            title="Copy IR text"
+            title="Copy Three-Address Code to clipboard"
           >
             {copied ? <Check size={11} style={{ color: 'var(--color-success)' }} /> : <Copy size={11} />}
             <span>{copied ? 'Copied' : 'Copy'}</span>

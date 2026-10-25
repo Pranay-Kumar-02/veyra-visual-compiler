@@ -51,16 +51,7 @@ export const TokenStreamPane: React.FC<TokenStreamPaneProps> = ({ tokens }) => {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              style={{
-                backgroundColor: 'var(--bg-app)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-xs)',
-                padding: '2px 6px',
-                color: 'var(--text-dim)',
-                fontSize: 11,
-                fontFamily: 'var(--font-mono)',
-                outline: 'none',
-              }}
+              className="custom-select"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (

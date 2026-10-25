@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { OptimizationReportData, IRData } from '../types';
-import { Zap, ArrowRight, Sparkles, Copy, Check } from 'lucide-react';
+import { Zap, ArrowRight, Sparkles, Copy, Check, TrendingDown, Layers } from 'lucide-react';
 
 interface OptimizerPaneProps {
   originalIr: IRData | null;
@@ -21,10 +21,10 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
   if (!report || !optimizedCode) {
     return (
       <div className="state-empty-clean">
-        <Zap size={24} style={{ color: 'var(--text-faint)' }} />
-        <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>No Optimization Report Available</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          Run compilation on valid VCL source to inspect modular 3AC optimization passes.
+        <Zap size={26} style={{ color: 'var(--text-faint)' }} />
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>No Optimization Report Available</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', maxWidth: 360, lineHeight: 1.5 }}>
+          Run compilation on valid VCL source to inspect modular fixed-point 3AC optimization passes and side-by-side IR reductions.
         </div>
       </div>
     );
@@ -43,16 +43,30 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
   const originalLines = originalCode.split('\n').filter((l) => l.trim().length > 0);
   const optimizedLines = optimizedCode.split('\n').filter((l) => l.trim().length > 0);
 
+  const reductionPercent = report.original_instruction_count > 0
+    ? ((report.reduction_count / report.original_instruction_count) * 100).toFixed(1)
+    : '0.0';
+
   return (
     <div className="view-content-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Header Bar */}
-      <div className="view-content-header">
+      <div className="view-content-header" style={{ height: 42, padding: '0 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="view-content-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Zap size={14} style={{ color: '#eab308' }} />
-            3AC Intermediate-Code Optimization
+          <span className="view-content-title" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+            <Zap size={14} style={{ color: 'var(--color-warning)' }} />
+            <span>Three-Address Code Optimization</span>
           </span>
-          <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          <span
+            style={{
+              fontSize: 10.5,
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              background: 'var(--bg-surface-elevated)',
+              padding: '2px 7px',
+              borderRadius: 'var(--radius-xs)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
             Modular Fixed-Point Pipeline
           </span>
         </div>
@@ -61,50 +75,100 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
           <button
             onClick={handleCopyOptimized}
             className="pane-action-btn"
-            title="Copy Optimized 3AC"
+            title="Copy optimized 3AC instructions to clipboard"
           >
-            {copiedOpt ? <Check size={12} style={{ color: '#10b981' }} /> : <Copy size={12} />}
+            {copiedOpt ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : <Copy size={12} />}
             <span>{copiedOpt ? 'Copied' : 'Copy Optimized'}</span>
           </button>
         </div>
       </div>
 
-      {/* Metric Summary Cards */}
+      {/* Analytical Metric Comparison Banner */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 10,
-          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 16px',
           background: 'var(--bg-surface)',
           borderBottom: '1px solid var(--border-subtle)',
+          flexWrap: 'wrap',
+          gap: 12,
         }}
       >
-        <div style={{ padding: '8px 10px', background: 'var(--bg-app)', borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Original 3AC Instructions</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>
-            {report.original_instruction_count}
+        {/* Instruction Flow Comparison: Original -> Optimized */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Original 3AC
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>
+              {report.original_instruction_count} <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)' }}>insts</span>
+            </span>
+          </div>
+
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-med)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent)',
+            }}
+          >
+            <ArrowRight size={14} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 10, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Optimized 3AC
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-success)', fontFamily: 'var(--font-mono)' }}>
+              {report.optimized_instruction_count} <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)' }}>insts</span>
+            </span>
           </div>
         </div>
 
-        <div style={{ padding: '8px 10px', background: 'var(--bg-app)', borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Optimized 3AC Instructions</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#10b981', fontFamily: 'var(--font-mono)' }}>
-            {report.optimized_instruction_count}
+        {/* Analytical Badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(52, 211, 153, 0.08)',
+              border: '1px solid rgba(52, 211, 153, 0.25)',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-xs)',
+            }}
+          >
+            <TrendingDown size={13} style={{ color: 'var(--color-success)' }} />
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>-{report.reduction_count}</span>
+              <span style={{ color: 'var(--text-dim)', marginLeft: 4 }}>eliminated ({reductionPercent}%)</span>
+            </div>
           </div>
-        </div>
 
-        <div style={{ padding: '8px 10px', background: 'var(--bg-app)', borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Instructions Eliminated</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-            {report.reduction_count}
-          </div>
-        </div>
-
-        <div style={{ padding: '8px 10px', background: 'var(--bg-app)', borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Transformations Applied</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
-            {report.transformation_count}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(251, 191, 36, 0.08)',
+              border: '1px solid rgba(251, 191, 36, 0.25)',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-xs)',
+            }}
+          >
+            <Sparkles size={13} style={{ color: 'var(--color-warning)' }} />
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--color-warning)' }}>{report.transformation_count}</span>
+              <span style={{ color: 'var(--text-dim)', marginLeft: 4 }}>transformations</span>
+            </div>
           </div>
         </div>
       </div>
@@ -112,24 +176,25 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
       {/* Main Split: Side-by-Side 3AC Comparison & Transformations Log */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left Side: Side-by-Side IR Code */}
-        <div style={{ flex: 1.2, display: 'flex', borderRight: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+        <div style={{ flex: 1.25, display: 'flex', borderRight: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
           {/* Original 3AC Column */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
             <div
               style={{
-                padding: '6px 12px',
+                height: 32,
+                padding: '0 12px',
                 fontSize: 10.5,
                 fontWeight: 600,
                 color: 'var(--text-muted)',
-                background: 'rgba(255, 255, 255, 0.02)',
+                background: 'var(--bg-surface)',
                 borderBottom: '1px solid var(--border-subtle)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
-              <span>ORIGINAL THREE-ADDRESS CODE</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>{originalLines.length} lines</span>
+              <span>ORIGINAL 3AC</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-faint)' }}>{originalLines.length} lines</span>
             </div>
 
             <div
@@ -140,15 +205,17 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
                 fontFamily: 'var(--font-mono)',
                 fontSize: 11.5,
                 lineHeight: 1.7,
-                background: 'var(--bg-app)',
+                background: 'var(--bg-input)',
               }}
             >
               {originalLines.map((line, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 10 }}>
-                  <span style={{ color: 'var(--text-faint)', width: 20, textAlign: 'right', userSelect: 'none' }}>
+                  <span style={{ color: 'var(--text-faint)', width: 22, textAlign: 'right', userSelect: 'none' }}>
                     {idx + 1}
                   </span>
-                  <span style={{ color: 'var(--text-main)' }}>{line}</span>
+                  <span style={{ color: line.trim().endsWith(':') ? 'var(--color-warning)' : 'var(--text-main)' }}>
+                    {line}
+                  </span>
                 </div>
               ))}
             </div>
@@ -158,19 +225,23 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div
               style={{
-                padding: '6px 12px',
+                height: 32,
+                padding: '0 12px',
                 fontSize: 10.5,
                 fontWeight: 600,
-                color: '#10b981',
-                background: 'rgba(16, 185, 129, 0.05)',
+                color: 'var(--color-success)',
+                background: 'var(--bg-surface)',
                 borderBottom: '1px solid var(--border-subtle)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
-              <span>OPTIMIZED THREE-ADDRESS CODE</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>{optimizedLines.length} lines</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-success)' }} />
+                <span>OPTIMIZED 3AC</span>
+              </div>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-faint)' }}>{optimizedLines.length} lines</span>
             </div>
 
             <div
@@ -181,15 +252,17 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
                 fontFamily: 'var(--font-mono)',
                 fontSize: 11.5,
                 lineHeight: 1.7,
-                background: 'var(--bg-app)',
+                background: 'var(--bg-input)',
               }}
             >
               {optimizedLines.map((line, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 10 }}>
-                  <span style={{ color: 'var(--text-faint)', width: 20, textAlign: 'right', userSelect: 'none' }}>
+                  <span style={{ color: 'var(--text-faint)', width: 22, textAlign: 'right', userSelect: 'none' }}>
                     {idx + 1}
                   </span>
-                  <span style={{ color: line.trim().endsWith(':') ? '#eab308' : '#10b981' }}>{line}</span>
+                  <span style={{ color: line.trim().endsWith(':') ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                    {line}
+                  </span>
                 </div>
               ))}
             </div>
@@ -197,34 +270,29 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
         </div>
 
         {/* Right Side: Transformation Records Log */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-surface)' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-app)', minWidth: 260 }}>
           {/* Filter Bar */}
           <div
             style={{
-              padding: '8px 12px',
+              height: 36,
+              padding: '0 12px',
               borderBottom: '1px solid var(--border-subtle)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              background: 'var(--bg-surface)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-main)' }}>
-              <Sparkles size={12} style={{ color: '#eab308' }} />
-              Transformation Log ({filteredTransformations.length})
+              <Sparkles size={12} style={{ color: 'var(--color-warning)' }} />
+              <span>Transformation Log ({filteredTransformations.length})</span>
             </div>
 
             <select
               value={selectedPass}
               onChange={(e) => setSelectedPass(e.target.value)}
-              style={{
-                background: 'var(--bg-app)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 4,
-                padding: '2px 8px',
-                color: 'var(--text-main)',
-                fontSize: 10.5,
-                outline: 'none',
-              }}
+              className="custom-select"
+              title="Filter transformations by pass"
             >
               <option value="all">All Passes</option>
               <option value="constant folding">Constant Folding</option>
@@ -238,45 +306,42 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
           {/* Transformation Cards List */}
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {filteredTransformations.length > 0 ? (
-              filteredTransformations.map((trans, idx) => (
+              filteredTransformations.map((t, idx) => (
                 <div
                   key={idx}
                   style={{
-                    background: 'var(--bg-app)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 6,
-                    padding: '8px 10px',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-med)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: 10,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 5,
+                    gap: 6,
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.15)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span
                       style={{
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: 600,
-                        textTransform: 'uppercase',
-                        color:
-                          trans.pass_name.includes('Folding') ? '#10b981' :
-                          trans.pass_name.includes('Propagation') ? '#3b82f6' :
-                          trans.pass_name.includes('Algebraic') ? '#a855f7' :
-                          '#ef4444',
-                        background: 'rgba(255, 255, 255, 0.05)',
+                        color: 'var(--accent)',
+                        background: 'var(--accent-subtle)',
+                        border: '1px solid var(--accent-border)',
                         padding: '1px 6px',
-                        borderRadius: 3,
+                        borderRadius: 'var(--radius-xs)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
                       }}
                     >
-                      {trans.pass_name}
+                      {t.pass_name}
                     </span>
-                    {trans.line > 0 && (
-                      <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                        Line {trans.line}
-                      </span>
-                    )}
+
+                    <span style={{ fontSize: 9.5, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                      #{idx + 1}
+                    </span>
                   </div>
 
-                  {/* Transformation Before -> After */}
                   <div
                     style={{
                       display: 'flex',
@@ -284,24 +349,28 @@ export const OptimizerPane: React.FC<OptimizerPaneProps> = ({
                       gap: 8,
                       fontFamily: 'var(--font-mono)',
                       fontSize: 11,
-                      padding: '4px 6px',
-                      background: 'rgba(0, 0, 0, 0.25)',
-                      borderRadius: 4,
+                      padding: '4px 8px',
+                      background: 'var(--bg-input)',
+                      borderRadius: 'var(--radius-xs)',
+                      border: '1px solid var(--border-subtle)',
                     }}
                   >
-                    <span style={{ color: '#ef4444', textDecoration: 'line-through' }}>{trans.original}</span>
-                    <ArrowRight size={12} style={{ color: 'var(--text-faint)' }} />
-                    <span style={{ color: '#10b981', fontWeight: 600 }}>{trans.optimized}</span>
+                    <span style={{ color: 'var(--color-error)' }}>{t.original}</span>
+                    <ArrowRight size={11} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+                    <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{t.optimized}</span>
                   </div>
 
-                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                    {trans.reason}
+                  <div style={{ fontSize: 10.5, color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                    {t.reason}
                   </div>
                 </div>
               ))
             ) : (
-              <div style={{ color: 'var(--text-muted)', fontSize: 11, textAlign: 'center', padding: 20 }}>
-                No transformations applied for the selected pass filter.
+              <div className="state-empty-clean" style={{ padding: 24 }}>
+                <Layers size={20} style={{ color: 'var(--text-faint)' }} />
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                  No transformations found for selected pass filter.
+                </div>
               </div>
             )}
           </div>

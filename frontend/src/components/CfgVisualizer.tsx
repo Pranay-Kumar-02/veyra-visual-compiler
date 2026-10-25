@@ -71,7 +71,7 @@ export const CfgVisualizer: React.FC<CfgVisualizerProps> = ({ cfg }) => {
       <div className="view-content-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="view-content-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <GitBranch size={14} style={{ color: 'var(--accent-primary)' }} />
+            <GitBranch size={14} style={{ color: 'var(--accent)' }} />
             Control Flow Graph (CFG)
           </span>
           <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
@@ -143,13 +143,13 @@ export const CfgVisualizer: React.FC<CfgVisualizerProps> = ({ cfg }) => {
                 style={{
                   background: isSelected ? 'var(--bg-surface-elevated)' : 'var(--bg-surface)',
                   border: isSelected
-                    ? '1.5px solid var(--accent-primary)'
+                    ? '1.5px solid var(--accent)'
                     : block.is_entry
-                    ? '1px solid rgba(59, 130, 246, 0.4)'
-                    : '1px solid var(--border-subtle)',
-                  borderRadius: 8,
+                    ? '1px solid rgba(56, 189, 248, 0.4)'
+                    : '1px solid var(--border-med)',
+                  borderRadius: 'var(--radius-sm)',
                   padding: 12,
-                  boxShadow: isSelected ? '0 0 12px rgba(99, 102, 241, 0.2)' : 'none',
+                  boxShadow: isSelected ? '0 0 12px rgba(56, 189, 248, 0.15)' : 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
@@ -162,7 +162,7 @@ export const CfgVisualizer: React.FC<CfgVisualizerProps> = ({ cfg }) => {
                         fontFamily: 'var(--font-mono)',
                         fontWeight: 700,
                         fontSize: 13,
-                        color: isSelected ? 'var(--accent-primary)' : 'var(--text-main)',
+                        color: isSelected ? 'var(--accent)' : 'var(--text-main)',
                       }}
                     >
                       {block.id}
@@ -325,7 +325,7 @@ export const CfgVisualizer: React.FC<CfgVisualizerProps> = ({ cfg }) => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 10 }}>
-            <Layers size={14} style={{ color: 'var(--accent-primary)' }} />
+            <Layers size={14} style={{ color: 'var(--accent)' }} />
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-main)' }}>
               Block Inspector: {selectedBlock ? selectedBlock.id : 'None'}
             </span>
@@ -429,7 +429,7 @@ export const CfgVisualizer: React.FC<CfgVisualizerProps> = ({ cfg }) => {
                   lineHeight: '1.5',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--accent-primary)', fontWeight: 600, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>
                   <Info size={12} />
                   Basic Block & Edge Rules
                 </div>

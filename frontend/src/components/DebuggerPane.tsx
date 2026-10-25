@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DebugTraceData, DebugEventItem } from '../types';
 import {
   Play,
+  Pause,
   RotateCcw,
   StepForward,
   StepBack,
@@ -31,10 +32,10 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
   if (!trace || !trace.events || trace.events.length === 0) {
     return (
       <div className="state-empty-clean">
-        <Bug size={24} style={{ color: 'var(--text-faint)' }} />
-        <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>No Debugger Trace Available</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          Compile source code to generate an interactive step-by-step AST execution trace.
+        <Bug size={26} style={{ color: 'var(--text-faint)' }} />
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>No Debugger Trace Available</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', maxWidth: 360, lineHeight: 1.5 }}>
+          Compile source code to generate an interactive step-by-step AST execution trace with immutable variable snapshots.
         </div>
       </div>
     );
@@ -43,7 +44,7 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
   const events = trace.events;
   const currentEvent: DebugEventItem = events[Math.min(currentStepIndex, events.length - 1)];
 
-  // Update line highlight when stepping
+  // Synchronize line highlight in the code editor
   useEffect(() => {
     if (currentEvent && currentEvent.line > 0 && onHighlightLine) {
       onHighlightLine(currentEvent.line, currentEvent.column);
@@ -57,7 +58,7 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
       if (currentStepIndex < events.length - 1) {
         timer = setTimeout(() => {
           setCurrentStepIndex((prev) => prev + 1);
-        }, 800);
+        }, 750);
       } else {
         setIsPlaying(false);
       }
@@ -97,27 +98,38 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
   };
 
   const visibleVars = Object.entries(currentEvent.variables || {});
+  const progressPercent = Math.round(((currentStepIndex + 1) / events.length) * 100);
 
   return (
     <div className="view-content-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Header Bar */}
-      <div className="view-content-header">
+      {/* Execution Control Header Bar */}
+      <div className="view-content-header" style={{ height: 42, padding: '0 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="view-content-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Bug size={14} style={{ color: '#ec4899' }} />
-            Step-by-Step Runtime Debugger
+          <span className="view-content-title" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+            <Bug size={14} style={{ color: 'var(--accent)' }} />
+            <span>Interactive Debugger</span>
           </span>
-          <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            Step {currentStepIndex + 1} of {events.length}
+          <span
+            style={{
+              fontSize: 10.5,
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              background: 'var(--bg-surface-elevated)',
+              padding: '2px 7px',
+              borderRadius: 'var(--radius-xs)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            Step {currentStepIndex + 1} of {events.length} ({progressPercent}%)
           </span>
         </div>
 
-        {/* Debugger Controls */}
+        {/* Debugger Controls Button Group */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             onClick={handleReset}
             className="pane-action-btn"
-            title="Reset to Start"
+            title="Reset trace to first step (Beginning)"
             disabled={currentStepIndex === 0 && !isPlaying}
           >
             <RotateCcw size={12} />
@@ -127,7 +139,7 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
           <button
             onClick={handleStepBack}
             className="pane-action-btn"
-            title="Step Backward (Previous Snapshot)"
+            title="Step backward to previous execution snapshot"
             disabled={currentStepIndex === 0}
           >
             <StepBack size={12} />
@@ -136,22 +148,17 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
 
           <button
             onClick={togglePlay}
-            className="pane-action-btn"
-            style={{
-              background: isPlaying ? 'rgba(236, 72, 153, 0.2)' : undefined,
-              borderColor: isPlaying ? '#ec4899' : undefined,
-              color: isPlaying ? '#ec4899' : undefined,
-            }}
-            title={isPlaying ? 'Pause Playback' : 'Auto Play Steps'}
+            className={`pane-action-btn ${isPlaying ? 'btn-pause' : 'btn-play'}`}
+            title={isPlaying ? 'Pause automatic execution playback' : 'Play automatic step execution'}
           >
-            <Play size={12} />
+            {isPlaying ? <Pause size={12} /> : <Play size={12} />}
             <span>{isPlaying ? 'Pause' : 'Play'}</span>
           </button>
 
           <button
             onClick={handleStepForward}
             className="pane-action-btn"
-            title="Step Forward (Next Event)"
+            title="Step forward to next statement"
             disabled={currentStepIndex >= events.length - 1}
           >
             <StepForward size={12} />
@@ -161,7 +168,7 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
           <button
             onClick={handleRunToEnd}
             className="pane-action-btn"
-            title="Run to Completion"
+            title="Run trace to completion"
             disabled={currentStepIndex >= events.length - 1}
           >
             <FastForward size={12} />
@@ -170,8 +177,22 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
         </div>
       </div>
 
-      {/* Progress Timeline Slider */}
-      <div style={{ padding: '8px 16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}>
+      {/* Styled Timeline & Progress Bar */}
+      <div
+        style={{
+          padding: '8px 16px',
+          background: 'var(--bg-surface)',
+          borderBottom: '1px solid var(--border-subtle)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          <span>1 (Start)</span>
+          <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Timeline Navigation</span>
+          <span>{events.length} (Completion)</span>
+        </div>
         <input
           type="range"
           min={0}
@@ -181,35 +202,33 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
             setIsPlaying(false);
             setCurrentStepIndex(Number(e.target.value));
           }}
-          style={{
-            width: '100%',
-            accentColor: 'var(--accent-primary)',
-            cursor: 'pointer',
-          }}
+          className="debugger-slider"
+          title={`Scrub to step ${currentStepIndex + 1}`}
         />
       </div>
 
       {/* Main Debugger Body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Left Side: Current Step Callout & Watch Variables */}
-        <div style={{ flex: 1.2, padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Active Statement Banner */}
+        {/* Left Side: Active Statement & Variable Watch Window */}
+        <div style={{ flex: 1.3, padding: 14, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Active Statement Card */}
           <div
             style={{
               background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 8,
+              border: '1px solid var(--border-med)',
+              borderRadius: 'var(--radius-sm)',
               padding: 12,
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Activity size={13} style={{ color: 'var(--accent-primary)' }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-main)' }}>
-                  Current Execution State
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <Activity size={13} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-main)' }}>
+                  Current Execution Statement
                 </span>
               </div>
 
@@ -219,9 +238,10 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
                     fontSize: 10,
                     fontFamily: 'var(--font-mono)',
                     color: 'var(--text-muted)',
-                    background: 'var(--bg-app)',
+                    background: 'var(--bg-surface-elevated)',
+                    border: '1px solid var(--border-subtle)',
                     padding: '2px 6px',
-                    borderRadius: 4,
+                    borderRadius: 'var(--radius-xs)',
                   }}
                 >
                   Line {currentEvent.line}, Col {currentEvent.column}
@@ -231,10 +251,11 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
                   style={{
                     fontSize: 10,
                     fontWeight: 600,
-                    color: 'var(--accent-primary)',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    padding: '2px 6px',
-                    borderRadius: 4,
+                    color: 'var(--accent)',
+                    background: 'var(--accent-subtle)',
+                    border: '1px solid var(--accent-border)',
+                    padding: '2px 7px',
+                    borderRadius: 'var(--radius-xs)',
                   }}
                 >
                   {currentEvent.node_type}
@@ -246,10 +267,11 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: 12,
+                lineHeight: 1.5,
                 color: 'var(--text-main)',
-                background: 'var(--bg-app)',
+                background: 'var(--bg-input)',
                 padding: '8px 10px',
-                borderRadius: 5,
+                borderRadius: 'var(--radius-xs)',
                 border: '1px solid var(--border-subtle)',
               }}
             >
@@ -261,20 +283,22 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
           {currentEvent.branch_info && (
             <div
               style={{
-                background: 'rgba(16, 185, 129, 0.08)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: 8,
-                padding: 10,
+                background: 'rgba(52, 211, 153, 0.08)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '9px 12px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
               }}
             >
-              <CheckCircle2 size={16} style={{ color: '#10b981' }} />
-              <div style={{ fontSize: 11, color: 'var(--text-main)' }}>
-                <span style={{ fontWeight: 600 }}>Branch Decision: </span>
-                Evaluated to <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#10b981' }}>{String(currentEvent.branch_info.evaluated_result)}</span>
-                {' '}— Taking <span style={{ fontWeight: 700 }}>{currentEvent.branch_info.branch_taken}</span> branch
+              <CheckCircle2 size={16} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+              <div style={{ fontSize: 11, color: 'var(--text-main)', lineHeight: 1.4 }}>
+                <span style={{ fontWeight: 600 }}>Branch Condition Evaluated: </span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-success)' }}>
+                  {String(currentEvent.branch_info.evaluated_result)}
+                </span>
+                {' '}— Executing <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{currentEvent.branch_info.branch_taken}</span> branch body
               </div>
             </div>
           )}
@@ -283,18 +307,18 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
           {currentEvent.error && (
             <div
               style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: 8,
+                background: 'var(--color-error-bg)',
+                border: '1px solid var(--color-error-border)',
+                borderRadius: 'var(--radius-sm)',
                 padding: 12,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 6,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ef4444', fontWeight: 600, fontSize: 12 }}>
-                <AlertCircle size={15} />
-                Runtime Error Encountered
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-error)', fontWeight: 600, fontSize: 11.5 }}>
+                <AlertCircle size={14} />
+                <span>Runtime Exception Encountered</span>
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>
                 {currentEvent.error.message}
@@ -310,29 +334,30 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
           {/* Variables Watch Table */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-dim)' }}>
                 Variables Watch Window ({visibleVars.length})
               </span>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                Deterministic memory snapshot
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                Deterministic Snapshot
               </span>
             </div>
 
             <div
               style={{
                 background: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 6,
+                border: '1px solid var(--border-med)',
+                borderRadius: 'var(--radius-sm)',
                 overflow: 'hidden',
               }}
             >
               {visibleVars.length > 0 ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(255, 255, 255, 0.02)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left' }}>
-                      <th style={{ padding: '6px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>Variable</th>
-                      <th style={{ padding: '6px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>Type</th>
-                      <th style={{ padding: '6px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>Value</th>
+                    <tr style={{ background: 'var(--bg-surface-elevated)', borderBottom: '1px solid var(--border-med)', textAlign: 'left' }}>
+                      <th style={{ padding: '7px 12px', color: 'var(--text-muted)', fontWeight: 600, fontSize: 10 }}>VARIABLE</th>
+                      <th style={{ padding: '7px 12px', color: 'var(--text-muted)', fontWeight: 600, fontSize: 10 }}>TYPE</th>
+                      <th style={{ padding: '7px 12px', color: 'var(--text-muted)', fontWeight: 600, fontSize: 10 }}>VALUE</th>
+                      <th style={{ padding: '7px 12px', color: 'var(--text-muted)', fontWeight: 600, fontSize: 10, textAlign: 'right' }}>STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -343,27 +368,42 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
                           key={vName}
                           style={{
                             borderBottom: '1px solid var(--border-subtle)',
-                            background: wasChanged ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
-                            transition: 'background 0.2s ease',
+                            background: wasChanged ? 'rgba(56, 189, 248, 0.08)' : 'transparent',
+                            transition: 'background 0.15s ease',
                           }}
                         >
-                          <td style={{ padding: '6px 10px', fontWeight: 600, color: wasChanged ? 'var(--accent-primary)' : 'var(--text-main)' }}>
+                          <td style={{ padding: '7px 12px', fontWeight: 600, color: wasChanged ? 'var(--accent)' : 'var(--text-main)' }}>
                             {vName}
-                            {wasChanged && (
-                              <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
-                                (updated)
+                          </td>
+                          <td style={{ padding: '7px 12px', color: 'var(--color-purple)' }}>{vData.type}</td>
+                          <td style={{ padding: '7px 12px', fontWeight: 700, color: 'var(--color-success)' }}>{String(vData.value)}</td>
+                          <td style={{ padding: '7px 12px', textAlign: 'right' }}>
+                            {wasChanged ? (
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  color: 'var(--accent)',
+                                  background: 'var(--accent-subtle)',
+                                  border: '1px solid var(--accent-border)',
+                                  padding: '2px 5px',
+                                  borderRadius: 3,
+                                  letterSpacing: '0.04em',
+                                }}
+                              >
+                                UPDATED
                               </span>
+                            ) : (
+                              <span style={{ fontSize: 9.5, color: 'var(--text-faint)' }}>IN SCOPE</span>
                             )}
                           </td>
-                          <td style={{ padding: '6px 10px', color: '#a855f7' }}>{vData.type}</td>
-                          <td style={{ padding: '6px 10px', fontWeight: 700, color: '#10b981' }}>{String(vData.value)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               ) : (
-                <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 11, textAlign: 'center' }}>
+                <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 11, textAlign: 'center' }}>
                   No variables defined in current scope at this execution step.
                 </div>
               )}
@@ -379,11 +419,13 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
             display: 'flex',
             flexDirection: 'column',
             background: 'var(--bg-app)',
+            minWidth: 260,
           }}
         >
           <div
             style={{
-              padding: '8px 12px',
+              height: 38,
+              padding: '0 12px',
               borderBottom: '1px solid var(--border-subtle)',
               display: 'flex',
               alignItems: 'center',
@@ -392,8 +434,8 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-main)' }}>
-              <Terminal size={12} style={{ color: '#10b981' }} />
-              Console Output at Step {currentStepIndex + 1}
+              <Terminal size={12} style={{ color: 'var(--color-success)' }} />
+              <span>Program Standard Output</span>
             </div>
 
             <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
@@ -409,10 +451,11 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
               fontFamily: 'var(--font-mono)',
               fontSize: 11.5,
               lineHeight: 1.6,
-              color: '#10b981',
+              color: 'var(--color-success)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 2,
+              gap: 4,
+              background: 'var(--bg-input)',
             }}
           >
             {currentEvent.output_so_far.length > 0 ? (
@@ -423,8 +466,8 @@ export const DebuggerPane: React.FC<DebuggerPaneProps> = ({ trace, onHighlightLi
                 </div>
               ))
             ) : (
-              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                No output emitted yet. Step forward to statements with print().
+              <span style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.5 }}>
+                No stdout output emitted at this execution step. Step forward to print() statements to view runtime output.
               </span>
             )}
           </div>

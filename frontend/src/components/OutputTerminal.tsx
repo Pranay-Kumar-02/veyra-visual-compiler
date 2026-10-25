@@ -36,19 +36,18 @@ export const OutputTerminal: React.FC<OutputTerminalProps> = ({
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
-            className="btn btn-secondary"
+            className="pane-action-btn"
             onClick={handleCopy}
             disabled={!output}
-            style={{ padding: '3px 7px', fontSize: 11 }}
             title="Copy stdout"
           >
             {copied ? <Check size={11} style={{ color: 'var(--color-success)' }} /> : <Copy size={11} />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
           <button
-            className="btn btn-secondary"
+            className="pane-action-btn"
             onClick={() => setCleared(!cleared)}
             style={{ padding: '3px 7px', fontSize: 11 }}
             title="Clear output view"

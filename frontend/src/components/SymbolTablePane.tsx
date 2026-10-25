@@ -50,16 +50,7 @@ export const SymbolTablePane: React.FC<SymbolTablePaneProps> = ({ symbols }) => 
             <select
               value={scopeFilter}
               onChange={(e) => setScopeFilter(e.target.value)}
-              style={{
-                backgroundColor: 'var(--bg-app)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-xs)',
-                padding: '2px 6px',
-                color: 'var(--text-dim)',
-                fontSize: 11,
-                fontFamily: 'var(--font-mono)',
-                outline: 'none',
-              }}
+              className="custom-select"
             >
               <option value="all">All Scopes</option>
               {scopes.map((sc) => (
