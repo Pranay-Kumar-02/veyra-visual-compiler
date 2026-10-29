@@ -18,6 +18,7 @@ from backend.semantic import SemanticAnalyzer
 from backend.ir import IRGenerator, IRProgram
 from backend.cfg import CFGBuilder
 from backend.optimizer import OptimizationPipeline
+from backend.codegen import CodeGenerator, AssemblyProgram
 from backend.debugger import TracedInterpreter
 from backend.errors import (
     Diagnostic,
@@ -44,6 +45,8 @@ class CompilationResult:
     optimized_ir: Optional[Dict[str, Any]] = None
     optimized_ir_code: str = ""
     optimization_report: Optional[Dict[str, Any]] = None
+    assembly: Optional[Dict[str, Any]] = None
+    assembly_code: str = ""
     debug_trace: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -58,6 +61,8 @@ class CompilationResult:
             "optimized_ir": self.optimized_ir,
             "optimized_ir_code": self.optimized_ir_code,
             "optimization_report": self.optimization_report,
+            "assembly": self.assembly,
+            "assembly_code": self.assembly_code,
             "debug_trace": self.debug_trace,
             "diagnostics": self.diagnostics,
             "output": self.output,
@@ -269,6 +274,7 @@ class VeyraCompiler:
         optimized_ir_data: Optional[Dict[str, Any]] = None
         optimized_ir_code: str = ""
         optimization_report: Optional[Dict[str, Any]] = None
+        opt_result = None
         try:
             optimizer = OptimizationPipeline()
             opt_result = optimizer.optimize(ir_program)
@@ -280,6 +286,39 @@ class VeyraCompiler:
                 Diagnostic(
                     stage=DiagnosticStage.SEMANTIC,
                     message=f"Internal optimizer error: {str(e)}",
+                    line=1,
+                    column=1,
+                )
+            )
+
+        # ---------------------------------------------------------------------
+        # STAGE 4.3: Target Code Generation (x86-64 NASM Assembly)
+        # ---------------------------------------------------------------------
+        assembly_data: Optional[Dict[str, Any]] = None
+        assembly_code: str = ""
+        try:
+            target_ir = opt_result.optimized_ir if opt_result is not None else ir_program
+            codegen = CodeGenerator()
+            asm_prog = codegen.generate(target_ir)
+            assembly_data = asm_prog.to_dict()
+            assembly_code = asm_prog.code
+            stages_executed.append("Target Code Generation")
+            if not asm_prog.is_valid:
+                for diag_dict in asm_prog.diagnostics:
+                    diagnostics.append(
+                        Diagnostic(
+                            stage=DiagnosticStage.SEMANTIC,
+                            message=diag_dict.get("message", "Target code generation issue"),
+                            line=diag_dict.get("line", 1),
+                            column=diag_dict.get("column", 1),
+                            severity=DiagnosticSeverity.WARNING,
+                        )
+                    )
+        except Exception as e:
+            diagnostics.append(
+                Diagnostic(
+                    stage=DiagnosticStage.SEMANTIC,
+                    message=f"Internal target code generator error: {str(e)}",
                     line=1,
                     column=1,
                 )
@@ -316,6 +355,8 @@ class VeyraCompiler:
                     optimized_ir=optimized_ir_data,
                     optimized_ir_code=optimized_ir_code,
                     optimization_report=optimization_report,
+                    assembly=assembly_data,
+                    assembly_code=assembly_code,
                     debug_trace=debug_trace_data,
                     diagnostics=diagnostics,
                     output_lines=output_lines,
@@ -342,6 +383,8 @@ class VeyraCompiler:
                     optimized_ir=optimized_ir_data,
                     optimized_ir_code=optimized_ir_code,
                     optimization_report=optimization_report,
+                    assembly=assembly_data,
+                    assembly_code=assembly_code,
                     debug_trace=debug_trace_data,
                     diagnostics=diagnostics,
                     output_lines=output_lines,
@@ -360,6 +403,8 @@ class VeyraCompiler:
             optimized_ir=optimized_ir_data,
             optimized_ir_code=optimized_ir_code,
             optimization_report=optimization_report,
+            assembly=assembly_data,
+            assembly_code=assembly_code,
             debug_trace=debug_trace_data,
             diagnostics=diagnostics,
             output_lines=output_lines,
@@ -383,6 +428,8 @@ class VeyraCompiler:
         optimized_ir: Optional[Dict[str, Any]] = None,
         optimized_ir_code: str = "",
         optimization_report: Optional[Dict[str, Any]] = None,
+        assembly: Optional[Dict[str, Any]] = None,
+        assembly_code: str = "",
         debug_trace: Optional[Dict[str, Any]] = None,
     ) -> CompilationResult:
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
@@ -391,6 +438,7 @@ class VeyraCompiler:
             "symbol_count": len(symbol_table),
             "ir_instruction_count": ir.get("instruction_count", 0) if ir else 0,
             "optimized_instruction_count": optimized_ir.get("instruction_count", 0) if optimized_ir else 0,
+            "assembly_instruction_count": assembly.get("instruction_count", 0) if assembly else 0,
             "cfg_block_count": cfg.get("block_count", 0) if cfg else 0,
             "cfg_edge_count": cfg.get("edge_count", 0) if cfg else 0,
             "debug_step_count": debug_trace.get("total_steps", 0) if debug_trace else 0,
@@ -409,6 +457,8 @@ class VeyraCompiler:
             optimized_ir=optimized_ir,
             optimized_ir_code=optimized_ir_code,
             optimization_report=optimization_report,
+            assembly=assembly,
+            assembly_code=assembly_code,
             debug_trace=debug_trace,
             diagnostics=[d.to_dict() for d in diagnostics],
             output="\n".join(output_lines),

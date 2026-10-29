@@ -57,6 +57,7 @@ def health():
             "Three-Address Code Generation",
             "Control Flow Graph Construction & Reachability",
             "Modular 3AC Optimization Pipeline",
+            "Target Code Generation (x86-64 NASM Intel Syntax)",
             "Step-by-Step Execution Debugger & Trace",
         ],
     })
@@ -155,6 +156,78 @@ def optimize_ir():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/codegen", methods=["POST"])
+def generate_target_code():
+    """Translates VCL source or optimized 3AC to x86-64 NASM Intel-syntax assembly."""
+    try:
+        data = request.get_json(silent=True) or {}
+        source = data.get("source") if data.get("source") is not None else data.get("code", "")
+        abi = data.get("abi", "sysv64")
+        use_optimized = data.get("use_optimized", True)
+
+        if not isinstance(source, str):
+            return jsonify({"error": "Invalid payload. 'source' must be a string."}), 400
+
+        if len(source) > MAX_SOURCE_LENGTH:
+            return jsonify({"error": "Payload too large."}), 413
+
+        result = compiler.compile(source=source, run_interpreter=False)
+        if not result.success and result.assembly is None:
+            return jsonify({
+                "success": False,
+                "diagnostics": result.diagnostics,
+                "assembly": None,
+                "assembly_code": "",
+            }), 400
+
+        # If user requested a custom ABI or unoptimized IR explicitly
+        if abi != "sysv64" or not use_optimized:
+            from backend.codegen import CodeGenerator
+            from backend.ir import IRGenerator
+            from backend.parser import Parser
+            from backend.lexer import Lexer
+            tokens = Lexer(source).tokenize()
+            ast = Parser(tokens).parse()
+            ir = IRGenerator().generate(ast)
+            target_ir = ir
+            if use_optimized:
+                from backend.optimizer import OptimizationPipeline
+                target_ir = OptimizationPipeline().optimize(ir).optimized_ir
+            gen = CodeGenerator(target_abi=abi)
+            asm = gen.generate(target_ir)
+            assembly_data = asm.to_dict()
+            assembly_code = asm.code
+        else:
+            assembly_data = result.assembly
+            assembly_code = result.assembly_code
+
+        return jsonify({
+            "success": True,
+            "assembly": assembly_data,
+            "assembly_code": assembly_code,
+            "target_arch": "x86-64",
+            "target_syntax": "NASM Intel Syntax",
+            "target_abi": assembly_data.get("target_abi", "System V AMD64 ABI") if assembly_data else "System V AMD64 ABI",
+            "diagnostics": result.diagnostics,
+            "metrics": result.metrics,
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": "Target code generation failed",
+            "message": str(e),
+            "diagnostics": [{
+                "stage": "System Error",
+                "message": f"Code generator error: {str(e)}",
+                "line": 1,
+                "column": 1,
+                "severity": "error",
+                "hint": None,
+                "formatted": str(e),
+            }],
+        }), 500
 
 
 @app.route("/api/debug", methods=["POST"])

@@ -10,6 +10,7 @@ import {
   Cpu,
   GitBranch,
   Zap,
+  Binary,
   Bug,
   Table,
   ListFilter,
@@ -23,6 +24,7 @@ import { AstVisualizer } from './components/AstVisualizer';
 import { ThreeAddressCodePane } from './components/ThreeAddressCodePane';
 import { CfgVisualizer } from './components/CfgVisualizer';
 import { OptimizerPane } from './components/OptimizerPane';
+import { TargetCodePane } from './components/TargetCodePane';
 import { DebuggerPane } from './components/DebuggerPane';
 import { SymbolTablePane } from './components/SymbolTablePane';
 import { TokenStreamPane } from './components/TokenStreamPane';
@@ -86,6 +88,8 @@ export const App: React.FC = () => {
         optimized_ir: null,
         optimized_ir_code: '',
         optimization_report: null,
+        assembly: null,
+        assembly_code: '',
         debug_trace: null,
         diagnostics: [
           {
@@ -268,6 +272,15 @@ export const App: React.FC = () => {
                     </button>
 
                     <button
+                      className={`tab-btn ${activeTab === 'target' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('target')}
+                      title="x86-64 NASM Target Assembly Code Generator"
+                    >
+                      <Binary size={13} />
+                      <span>ASM / Target</span>
+                    </button>
+
+                    <button
                       className={`tab-btn ${activeTab === 'debugger' ? 'active' : ''}`}
                       onClick={() => setActiveTab('debugger')}
                     >
@@ -346,6 +359,14 @@ export const App: React.FC = () => {
                       optimizedIr={result?.optimized_ir || null}
                       optimizedCode={result?.optimized_ir_code || ''}
                       report={result?.optimization_report || null}
+                    />
+                  )}
+
+                  {activeTab === 'target' && (
+                    <TargetCodePane
+                      assembly={result?.assembly || null}
+                      assemblyCode={result?.assembly_code || ''}
+                      diagnostics={result?.diagnostics || []}
                     />
                   )}
 

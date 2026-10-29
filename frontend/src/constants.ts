@@ -115,7 +115,7 @@ export interface StageDefinition {
   title: string;
   shortLabel: string;
   description: string;
-  viewTab: 'ast' | 'ir' | 'symbols' | 'tokens' | 'diagnostics' | 'output';
+  viewTab: 'ast' | 'ir' | 'target' | 'symbols' | 'tokens' | 'diagnostics' | 'output';
   color: string;
   glowColor: string;
   positionX: number; // 3D spatial coordinate
@@ -209,6 +209,18 @@ export const COMPILER_STAGES: StageDefinition[] = [
     positionZ: -0.8,
   },
   {
+    id: 'target',
+    title: 'Target Code Generation',
+    shortLabel: 'ASM / TARGET',
+    description: 'x86-64 NASM Intel-syntax assembly synthesis with stack frame allocation',
+    viewTab: 'target',
+    color: '#818cf8',
+    glowColor: 'rgba(129, 140, 248, 0.6)',
+    positionX: 13,
+    positionY: 0.5,
+    positionZ: 0.5,
+  },
+  {
     id: 'execution',
     title: 'Runtime Execution',
     shortLabel: 'EXECUTION',
@@ -216,8 +228,8 @@ export const COMPILER_STAGES: StageDefinition[] = [
     viewTab: 'output',
     color: '#10b981',
     glowColor: 'rgba(16, 185, 129, 0.6)',
-    positionX: 14,
-    positionY: 0.5,
+    positionX: 16,
+    positionY: -0.2,
     positionZ: 0,
   },
 ];

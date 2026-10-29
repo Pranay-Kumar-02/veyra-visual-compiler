@@ -178,11 +178,39 @@ export interface DiagnosticItem {
   formatted: string;
 }
 
+// ----------------------------------------------------------------------------
+// Target Code Generation (x86-64 NASM Assembly) Types
+// ----------------------------------------------------------------------------
+export interface AssemblyInstructionItem {
+  label?: string | null;
+  mnemonic?: string | null;
+  operands?: string | null;
+  comment?: string | null;
+  is_directive?: boolean;
+  formatted: string;
+  line_number: number;
+}
+
+export interface AssemblyData {
+  code: string;
+  instructions: AssemblyInstructionItem[];
+  instruction_count: number;
+  stack_frame_size: number;
+  variable_offsets: Record<string, string>;
+  target_arch: string;
+  target_syntax: string;
+  target_abi: string;
+  runtime_dependencies: string[];
+  diagnostics: DiagnosticItem[];
+  is_valid: boolean;
+}
+
 export interface MetricsData {
   token_count: number;
   symbol_count: number;
   ir_instruction_count: number;
   optimized_instruction_count?: number;
+  assembly_instruction_count?: number;
   cfg_block_count?: number;
   cfg_edge_count?: number;
   debug_step_count?: number;
@@ -202,6 +230,8 @@ export interface CompilationResult {
   optimized_ir?: IRData | null;
   optimized_ir_code?: string;
   optimization_report?: OptimizationReportData | null;
+  assembly?: AssemblyData | null;
+  assembly_code?: string;
   debug_trace?: DebugTraceData | null;
   diagnostics: DiagnosticItem[];
   output: string;
@@ -210,6 +240,7 @@ export interface CompilationResult {
   metrics: MetricsData;
 }
 
-export type ViewTab = 'ast' | 'ir' | 'cfg' | 'optimizer' | 'debugger' | 'symbols' | 'tokens' | 'diagnostics' | 'output';
+export type ViewTab = 'ast' | 'ir' | 'cfg' | 'optimizer' | 'target' | 'debugger' | 'symbols' | 'tokens' | 'diagnostics' | 'output';
 
 export type WorkspaceMode = '3d-spatial' | 'split-workbench' | 'focus-editor';
+

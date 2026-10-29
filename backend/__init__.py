@@ -26,6 +26,7 @@ from backend.cfg import CFGBuilder, ControlFlowGraph, BasicBlock, CFGEdge
 from backend.optimizer import OptimizationPipeline, OptimizationResult, TransformationRecord
 from backend.debugger import TracedInterpreter, DebugTrace, DebugEvent
 from backend.compiler import VeyraCompiler, CompilationResult
+from backend.codegen import CodeGenerator, AssemblyProgram, AssemblyInstruction
 
 __all__ = [
     "Token",
@@ -61,4 +62,7 @@ __all__ = [
     "DebugEvent",
     "VeyraCompiler",
     "CompilationResult",
+    "CodeGenerator",
+    "AssemblyProgram",
+    "AssemblyInstruction",
 ]

@@ -16,7 +16,7 @@ An interactive compiler engineering environment that makes the language-processi
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white" alt="Python 3.12" /></a>
   <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Backend-Flask_3.1-000000.svg?style=flat&logo=flask&logoColor=white" alt="Flask" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/Frontend-React_18_%7C_TypeScript_5-38bdf8.svg?style=flat&logo=react&logoColor=white" alt="React & TypeScript" /></a>
-  <a href="tests/"><img src="https://img.shields.io/badge/Tests-89_Passing-10b981.svg?style=flat&logo=pytest&logoColor=white" alt="Tests" /></a>
+  <a href="tests/"><img src="https://img.shields.io/badge/Tests-100_Passing-10b981.svg?style=flat&logo=pytest&logoColor=white" alt="Tests" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-38bdf8.svg?style=flat" alt="MIT License" /></a>
 </p>
 
@@ -40,12 +40,13 @@ For computer science students, compiler engineers, and software architects, this
 3. How lexical scopes resolve identifier bindings in a Symbol Table.
 4. How AST statements are linearized into Three-Address Code (3AC) with explicit temporaries and jump targets.
 5. How basic blocks form a directed Control Flow Graph (CFG) with branch and fall-through edges.
-6. How classical compiler optimizations (constant folding, copy propagation, algebraic simplification, dead code elimination) transform intermediate code safely.
-7. How the execution runtime steps through code, tracks variable updates, and traps exceptions.
+6. How classical compiler optimizations transform intermediate code safely.
+7. How optimized 3AC instructions are synthesized into target x86-64 assembly with stack frame allocation.
+8. How the execution runtime steps through code, tracks variable updates, and traps exceptions.
 
 **Veyra Visual Compiler** solves this by making the entire compiler pipeline transparent, inspectable, and interactive:
 
-$$\text{Source} \to \text{Tokens} \to \text{AST} \to \text{Semantics} \to \text{Symbol Table} \to \text{3AC (IR)} \to \text{CFG} \to \text{Optimization} \to \text{Traced Debugger} \to \text{Output}$$
+$$\text{Source} \to \text{Tokens} \to \text{AST} \to \text{Semantics} \to \text{Symbol Table} \to \text{3AC (IR)} \to \text{CFG} \to \text{Optimization} \to \text{Target Code (x86-64)} \to \text{Traced Debugger} \to \text{Output}$$
 
 ---
 
@@ -63,19 +64,21 @@ graph TD
         E --> H["3AC IR Generator"]
     end
 
-    subgraph Phase 3 Advanced Subsystems
+    subgraph Optimization & Target Code Synthesis
         H --> I["Control Flow Graph Builder"]
         I --> J["Basic Block Flow & Reachability"]
         H --> K["Modular 3AC Optimizer"]
         K --> L["Folding, Propagation, DCE & Simplification"]
-        E --> M["Traced Interpreter & Debugger"]
-        M <--> G
-        M --> N["Execution Snapshots & Timeline"]
+        K --> M["Target Code Generator (x86-64 NASM)"]
+        M --> N["Stack Frame Allocation & ASM Source"]
+        E --> O["Traced Interpreter & Debugger"]
+        O <--> G
+        O --> P["Execution Snapshots & Timeline"]
     end
 
     subgraph Service & Presentation Layer
-        C & E & G & H & J & L & N --> O["Flask REST API Engine (/api/compile, /cfg, /optimize, /debug)"]
-        O --> P["React 18 + TypeScript Developer Workbench"]
+        C & E & G & H & J & L & N & P --> Q["Flask REST API Engine (/api/compile, /cfg, /optimize, /codegen, /debug)"]
+        Q --> R["React 18 + TypeScript Developer Workbench"]
     end
 ```
 
@@ -114,6 +117,22 @@ graph TD
   - Maintains immutable snapshots of visible variables, modified variables, branch decisions (`Then` vs `Else`), and accumulated stdout.
   - **Deterministic navigation:** Forward, backward, and reset scrubbing operates on recorded snapshots and never reruns side-effects.
   - Synchronizes active statement execution with the code editor line highlighter.
+
+### Final Stage: Target Code Generation (`backend/codegen.py`)
+- **x86-64 NASM Target Assembly:** Synthesizes readable Intel-syntax assembly code from validated, optimized Three-Address Code.
+- **ABI Compliance:** Implements 16-byte stack frame alignment compliant with both **System V AMD64 ABI** (Linux/macOS default) and **Microsoft x64 ABI** (Windows with 32-byte shadow space).
+- **Stack Allocation Model:** Deterministic base-pointer relative stack slots (`[rbp - offset]`) for all program variables and compiler temporaries.
+- **Instruction Mappings:**
+  - **Copy:** Immediate constants and memory-to-memory data transfers via `mov`.
+  - **Arithmetic:** `add`, `sub`, `imul`, and signed `idiv` with `cqo` quadword sign extension.
+  - **Relational Comparisons:** `cmp` followed by condition set byte instructions (`sete`, `setne`, `setl`, `setle`, `setg`, `setge`) and `movzx` zero extension.
+  - **Logical Conditions:** Boolean short-circuit and masking (`and`, `or`, `not`).
+  - **Control Flow:** Label definitions (`L1:`, `L2:`, ...), unconditional jumps (`jmp`), and conditional branches (`je`, `jne`).
+  - **Output & Runtime:** External linkage to standard C library runtime (`printf`, `exit`), with string literals (`fmt_int`, `str_true`, `str_false`).
+  - **Runtime Zero Trapping:** Emits an automatic zero-divisor guard (`.L_div_zero_trap`) for division and modulo, matching the semantic specification of VCL.
+- **Developer Workbench Integration:** Polished **ASM / Target** view tab positioned after the Optimizer, featuring line numbers, color-coded syntax highlighting, a live **Stack Slots Drawer**, one-click **Copy Assembly**, and **Download .asm** capabilities.
+- **Dedicated REST API:** `/api/codegen` endpoint providing structured assembly code, stack frame metadata, instruction counts, and error diagnostics.
+- **Execution & Assembler Notes:** Target code is emitted as clean assembly source. In host environments lacking a native x86-64 NASM assembler, raw binary machine execution is not fabricated; the verified AST interpreter remains the established execution engine.
 
 ---
 
@@ -185,9 +204,10 @@ The Flask backend exposes modular, hardened REST endpoints:
 
 | Endpoint | Method | Payload | Description |
 | :--- | :---: | :--- | :--- |
-| `/api/compile` | `POST` | `{"source": "..."}` | Complete compiler pipeline returning tokens, AST, symbols, 3AC, CFG, optimized IR, debug trace, and diagnostics. |
+| `/api/compile` | `POST` | `{"source": "..."}` | Complete compiler pipeline returning tokens, AST, symbols, 3AC, CFG, optimized IR, target assembly, debug trace, and diagnostics. |
 | `/api/cfg` | `POST` | `{"source": "..."}` | Returns basic blocks, edges, reachability status, and target validation. |
 | `/api/optimize` | `POST` | `{"source": "..."}` | Returns original vs optimized 3AC and detailed transformation records. |
+| `/api/codegen` | `POST` | `{"source": "...", "abi": "sysv64"}` | Returns x86-64 NASM Intel-syntax assembly with stack slot mappings and frame allocation. |
 | `/api/debug` | `POST` | `{"source": "..."}` | Returns discrete execution event sequence with variable snapshots. |
 | `/api/examples` | `GET` | _None_ | Safely lists curated `.vcl` example programs. |
 | `/api/health` | `GET` | _None_ | System status, version info, and security metadata. |
@@ -230,10 +250,11 @@ npm run dev     # Starts Vite development server for live HMR
 
 ### 3. Run Automated Tests
 ```bash
-# Run full automated test suite (89 test cases)
+# Run full automated test suite (100 test cases)
 python -m pytest -v
 
 # Run specific feature test suites
+python -m pytest tests/test_codegen.py -v
 python -m pytest tests/test_cfg.py -v
 python -m pytest tests/test_optimizer.py -v
 python -m pytest tests/test_debugger.py -v
@@ -245,26 +266,27 @@ python -m pytest tests/test_integration.py -v
 
 ## 8. Automated Test Suite Breakdown
 
-All 89 automated tests pass with 100% success rate:
+All 100 automated tests pass with 100% success rate:
 
 ```
 ============================= test session starts =============================
-platform win32 -- Python 3.12.5, pytest-8.3.5, pluggy-1.6.0
+platform win32 -- Python 3.12.5, pytest-9.1.1, pluggy-1.6.0
 rootdir: C:\Users\PRANAY KUMAR\OneDrive\Desktop\veyra-visual-compiler
-collected 89 items
+collected 100 items
 
-tests\test_api_and_phase3.py .........                                   [ 10%]
-tests\test_cfg.py .......                                                [ 17%]
-tests\test_debugger.py .....                                             [ 23%]
-tests\test_integration.py ..............                                 [ 39%]
-tests\test_interpreter.py ........                                       [ 48%]
-tests\test_ir.py ............                                            [ 61%]
-tests\test_lexer.py .........                                            [ 71%]
-tests\test_optimizer.py ..........                                       [ 83%]
-tests\test_parser.py ........                                            [ 92%]
+tests\test_api_and_phase3.py .........                                   [  9%]
+tests\test_cfg.py .......                                                [ 16%]
+tests\test_codegen.py ...........                                        [ 27%]
+tests\test_debugger.py .....                                             [ 32%]
+tests\test_integration.py ..............                                 [ 46%]
+tests\test_interpreter.py ........                                       [ 54%]
+tests\test_ir.py ............                                            [ 66%]
+tests\test_lexer.py .........                                            [ 75%]
+tests\test_optimizer.py ..........                                       [ 85%]
+tests\test_parser.py ........                                            [ 93%]
 tests\test_semantic.py .......                                           [100%]
 
-============================= 89 passed in 1.04s ==============================
+============================ 100 passed in 1.48s ==============================
 ```
 
 ---

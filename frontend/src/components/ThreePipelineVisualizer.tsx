@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { COMPILER_STAGES } from '../constants';
 import { CompilationResult } from '../types';
-import { CheckCircle2, AlertCircle, Clock, ArrowRight, FileCode, Scan, GitBranch, Network, ShieldCheck, Table, Cpu, Terminal } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, ArrowRight, FileCode, Scan, GitBranch, Network, ShieldCheck, Table, Cpu, Binary, Terminal } from 'lucide-react';
 
 interface ThreePipelineVisualizerProps {
   result: CompilationResult | null;
@@ -27,6 +27,7 @@ export const ThreePipelineVisualizer: React.FC<ThreePipelineVisualizerProps> = (
       semantic: 'Semantic Analysis',
       symbols: 'Semantic Analysis',
       ir: 'IR Generation',
+      target: 'Target Code Generation',
       execution: 'Interpreter',
     };
 
@@ -62,6 +63,8 @@ export const ThreePipelineVisualizer: React.FC<ThreePipelineVisualizerProps> = (
         return `${result.symbol_table?.length || 0} symbols`;
       case 'ir':
         return `${result.ir?.instruction_count || 0} insts`;
+      case 'target':
+        return `${result.assembly?.instruction_count || 0} asm lines`;
       case 'execution':
         return success ? `Exit 0 (${result.output || 'OK'})` : 'Exit 1 (Trapped)';
       default:
@@ -78,6 +81,7 @@ export const ThreePipelineVisualizer: React.FC<ThreePipelineVisualizerProps> = (
       case 'semantic': return <ShieldCheck size={14} />;
       case 'symbols': return <Table size={14} />;
       case 'ir': return <Cpu size={14} />;
+      case 'target': return <Binary size={14} />;
       case 'execution': return <Terminal size={14} />;
       default: return null;
     }
@@ -97,7 +101,7 @@ export const ThreePipelineVisualizer: React.FC<ThreePipelineVisualizerProps> = (
               Compiler Architecture Pipeline
             </span>
             <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              8 Connected Stages · Live State Synchronization
+              9 Connected Stages · Live State Synchronization
             </span>
           </div>
 

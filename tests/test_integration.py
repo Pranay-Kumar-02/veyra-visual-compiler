@@ -22,7 +22,7 @@ def test_end_to_end_sample_program(compiler):
     assert len(result.diagnostics) == 0
 
     # Verify stages executed
-    assert result.stages_executed == ["Lexer", "Parser", "Semantic Analysis", "IR Generation", "Interpreter"]
+    assert result.stages_executed == ["Lexer", "Parser", "Semantic Analysis", "IR Generation", "Target Code Generation", "Interpreter"]
 
     # Verify IR generation
     assert result.ir is not None
