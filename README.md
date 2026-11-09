@@ -1,4 +1,4 @@
-# Veyra Visual Compiler qwerty
+# Veyra Visual Compiler
 
 An interactive compiler engineering environment for exploring language processing, intermediate representations, control flow, optimization, runtime tracing, and assembly generation.
 
